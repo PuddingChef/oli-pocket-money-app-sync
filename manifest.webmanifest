@@ -1,6 +1,6 @@
 {
-  "name": "Oli's Pocket Money",
-  "short_name": "Oli's Money Test",
+  "name": "Oli's Money",
+  "short_name": "Oli's Money",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -16,4 +16,5 @@
     }
   ]
 }
+
 
