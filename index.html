@@ -896,6 +896,17 @@
   }
   tabs.forEach(t=> t.addEventListener("click", ()=> switchTab(t.dataset.tab)));
 
+  // Simple auto-enter: if signed in and household+child already selected, go straight to app
+  function autoEnterIfReady(){
+    if(!currentUser) return;
+    if(!selectedHouseholdId || !selectedChildId) return;
+
+    $("tabs").style.display = "grid";
+    showPanel("chores");
+    subscribeState();
+    renderAll();
+  }
+
   // Sync pill
   function setSyncPill(text, tone=""){
     $("syncPill").textContent = text;
@@ -954,7 +965,7 @@
 
     function step(t){
       const p = Math.min(1, (t - anim.start) / anim.dur);
-      const e = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      const e = 1 - Math.pow(1 - p, 3);
       const v = anim.from + (anim.to - anim.from) * e;
       $("totalDisplay").textContent = fmtGBP(v);
       $("totalDisplay").dataset.value = String(v);
@@ -1048,7 +1059,6 @@
 
     if(!currentUser || !selectedHouseholdId || !selectedChildId) return;
 
-    // Load cache immediately
     const cached = cacheLoad(selectedHouseholdId, selectedChildId);
     if(cached) state = mergeDefaults(cached);
 
@@ -1057,7 +1067,6 @@
     const ref = childStateRef(selectedHouseholdId, selectedChildId);
     stateUnsub = onSnapshot(ref, (snap)=>{
       if(!snap.exists()){
-        // Seed if missing
         seedChildStateIfMissing().catch(()=>{});
         return;
       }
@@ -1067,7 +1076,6 @@
       const updatedBy = data.updatedByUid || "";
       const remoteMs = data.updatedAt?.toMillis?.() || 0;
 
-      // Ignore our own immediate echo
       if(updatedBy === currentUser.uid && remoteMs && remoteMs <= (lastLocalWriteMs + 400)) {
         return;
       }
@@ -1079,7 +1087,7 @@
 
       setSyncPill("Sync • Updated", "good");
       renderAll();
-    }, (err)=>{
+    }, ()=>{
       setSyncPill("Sync • Permission issue", "warn");
     });
 
@@ -1111,7 +1119,6 @@
       snap.forEach(d=> children.push({ id:d.id, ...d.data() }));
       children.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||"")));
 
-      // Render select
       const sel = $("childSelect");
       sel.innerHTML = children.map(c=> `<option value="${c.id}">${escapeHTML(c.name||"Child")}</option>`).join("");
 
@@ -1126,6 +1133,8 @@
       $("childStatus").textContent = selectedChildId ? "Selected" : "None selected";
       updateSubline(children);
 
+      // Key change: if we are already "ready", jump straight into the app
+      autoEnterIfReady();
     }, ()=> toast("Cannot read children (check rules/membership)"));
   }
 
@@ -1225,35 +1234,34 @@
 
     try{
       const hid = uid().replace("id_","h_");
-    
+
       await setDoc(doc(db,"households",hid),{
         name,
         createdAt: Timestamp.now(),
         createdByUid: currentUser.uid
       });
 
-    // membership doc (role is literal)
-    await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
-      role: "owner",
-      joinedAt: Timestamp.now()
-    });
+      await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
+        role: "owner",
+        joinedAt: Timestamp.now()
+      });
 
-    selectedHouseholdId = hid;
-    localStorage.setItem("selectedHouseholdId", hid);
-    rememberHousehold(hid);
+      selectedHouseholdId = hid;
+      localStorage.setItem("selectedHouseholdId", hid);
+      rememberHousehold(hid);
 
-    toast("Household created");
-    $("householdStatus").textContent = `Selected: ${hid}`;
-    $("childCard").style.display = "block";
+      toast("Household created");
+      $("householdStatus").textContent = `Selected: ${hid}`;
+      $("childCard").style.display = "block";
 
-    await renderHouseholdsList();
-    await generateInviteForHousehold(hid);
-    subscribeChildren();
-  }catch(e){
+      await renderHouseholdsList();
+      await generateInviteForHousehold(hid);
+      subscribeChildren();
+    }catch(e){
       console.error(e);
       toast(e?.message ? `Create failed: ${e.message}` : "Create failed (check console)");
+    }
   }
-}
 
   async function joinHousehold(){
     const code = ($("inviteCode").value||"").trim().toUpperCase();
@@ -1267,7 +1275,6 @@
 
     const hid = inv.householdId;
 
-    // membership doc must include inviteCode if your rules require it
     await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
       role: "member",
       joinedAt: Timestamp.now(),
@@ -1297,7 +1304,6 @@
       createdAt: Timestamp.now()
     });
 
-    // Seed state
     const seed = mergeDefaults(defaultState());
     await setDoc(childStateRef(selectedHouseholdId, childRef.id),{
       schemaVersion: seed.version,
@@ -1314,11 +1320,9 @@
     if(!selectedHouseholdId){ toast("Select a household"); return; }
     if(!selectedChildId){ toast("Select a child"); return; }
 
-    // Update selection from dropdown in case it changed
     selectedChildId = $("childSelect").value || selectedChildId;
     localStorage.setItem("selectedChildId", selectedChildId);
 
-    // show app tabs and open chores
     $("tabs").style.display = "grid";
     showPanel("chores");
     subscribeState();
@@ -1437,7 +1441,6 @@
     const amount = Number(c.value || 0);
     if(amount <= 0) return;
 
-    // Update chore lastCompletedAt
     c.lastCompletedAt = nowISO();
 
     state.earnedTotal = round2(state.earnedTotal + amount);
@@ -1459,11 +1462,10 @@
 
     renderActivity();
     renderGoals();
-    renderHistory(); // bank KPIs
-    renderChores();  // reflect frequency state
+    renderHistory();
+    renderChores();
   }
 
-  // Activity undo
   function undoActivity(id){
     const item = state.activity.find(a=>a.id===id);
     if(!item) return;
@@ -1482,7 +1484,6 @@
     renderHistory();
   }
 
-  // Manual adjust
   function openManualAdjust(sign){
     const isAdd = sign === 1;
     openModal({
@@ -1528,7 +1529,6 @@
     setTimeout(()=> $("mValue")?.focus(), 40);
   }
 
-  // Reset current period -> history record (bank grows)
   async function resetTotal(){
     const ok = await confirmModal({
       title:"Reset current period?",
@@ -1675,11 +1675,9 @@
     const payload = exportPayload();
     const json = JSON.stringify(payload, null, 2);
 
-    // Try share
     const blob = new Blob([json], { type:"application/json" });
     const file = new File([blob], `pocketmoney-${selectedHouseholdId}-${selectedChildId}.json`, { type:"application/json" });
 
-    // 1) Native share if possible
     try{
       if(navigator.canShare && navigator.canShare({ files:[file] })){
         await navigator.share({ title:"Pocket Money Export", text:"Pocket Money export file", files:[file] });
@@ -1688,7 +1686,6 @@
       }
     }catch(e){}
 
-    // 2) Download
     try{
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1702,7 +1699,6 @@
       return;
     }catch(e){}
 
-    // 3) Clipboard
     try{
       await navigator.clipboard.writeText(json);
       toast("Copied to clipboard");
@@ -1770,6 +1766,14 @@
 
         <div class="divider"></div>
 
+        <div style="font-weight:950; margin-bottom:6px;">Quick actions</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="primary" id="manageSetupBtn">Manage setup</button>
+          <button class="ghost" id="goToChoresBtn">Go to chores</button>
+        </div>
+
+        <div class="divider"></div>
+
         <div style="font-weight:950; margin-bottom:6px;">App settings (synced per child)</div>
         <div class="grid">
           <div class="card" style="padding:10px;">
@@ -1833,6 +1837,20 @@
       ]
     });
 
+    // Quick actions
+    $("manageSetupBtn").addEventListener("click", ()=>{
+      closeModal();
+      $("tabs").style.display = "none";
+      showPanel("onboarding");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    $("goToChoresBtn").addEventListener("click", ()=>{
+      closeModal();
+      $("tabs").style.display = "grid";
+      showPanel("chores");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
     // Wire buttons
     $("toggleSoundBtn").addEventListener("click", ()=>{
       state.settings.soundEnabled = !state.settings.soundEnabled;
@@ -1886,14 +1904,13 @@
     });
   }
 
-  // Notifications (best-effort; no true scheduled push without backend)
+  // Notifications
   async function enableNotifications(){
     try{
       if(!("Notification" in window)) return false;
       const perm = await Notification.requestPermission();
       if(perm !== "granted") return false;
 
-      // Optional immediate “test” notification via service worker if available
       try{
         if(swReg && swReg.showNotification){
           await swReg.showNotification("Oli's Money", {
@@ -1909,13 +1926,13 @@
     }
   }
 
-  // Weekly reminder check (in-app)
+  // Weekly reminder tick
   async function weeklyReminderTick(){
     if(!deviceSettings.weeklyReminderEnabled) return;
     if(!selectedHouseholdId || !selectedChildId) return;
 
     const now = new Date();
-    const isSunday = now.getDay() === 0; // Sunday
+    const isSunday = now.getDay() === 0;
     if(!isSunday) return;
 
     const hhmm = (deviceSettings.weeklyReminderTime || "18:00").split(":");
@@ -1930,7 +1947,6 @@
     deviceSettings.lastReminderDate = todayKey;
     saveDeviceSettings(deviceSettings);
 
-    // Best-effort notification
     if(deviceSettings.notificationsEnabled && "Notification" in window && Notification.permission === "granted"){
       try{
         if(swReg && swReg.showNotification){
@@ -1942,7 +1958,6 @@
       }catch(e){}
     }
 
-    // In-app prompt (reliable)
     const ok = await confirmModal({
       title:"Weekly reminder",
       message:"It’s Sunday. Do you want to reset the current period now?",
@@ -1995,7 +2010,6 @@
     state.history = [];
     state.bankSpent = 0;
     state.goalRedemptions = [];
-    // Reset redeemed flags (optional but usually expected for a clean slate)
     (state.goals || []).forEach(g=> g.redeemedAt = null);
 
     scheduleSave();
@@ -2089,7 +2103,6 @@
   }
 
   function renderHistory(){
-    // KPIs
     $("bankTotal").textContent = fmtGBP(bankTotal());
     $("bankAvailable").textContent = fmtGBP(bankAvailable());
 
@@ -2102,7 +2115,6 @@
     else $("historyFilter").value = "all";
 
     const filterVal = $("historyFilter").value;
-
     $("historyList").innerHTML = "";
 
     if(mode === "records"){
@@ -2306,7 +2318,6 @@
       showPanel("onboarding");
       setSyncPill("Sync • Signed out", "");
 
-      // stop listeners
       if(childrenUnsub){ childrenUnsub(); childrenUnsub=null; }
       if(stateUnsub){ stateUnsub(); stateUnsub=null; }
 
@@ -2316,10 +2327,8 @@
     $("authStatus").textContent = "Signed in";
     $("signOutBtn").style.display = "inline-block";
     $("householdCard").style.display = "block";
-
     setSyncPill("Sync • Signed in", "good");
 
-    // Render households list (recent on this device) and attempt to subscribe children if household selected
     await renderHouseholdsList();
 
     if(selectedHouseholdId){
@@ -2328,6 +2337,7 @@
     } else {
       $("childCard").style.display = "none";
       $("subline").textContent = "Create or join a household to begin";
+      showPanel("onboarding");
     }
   });
 
@@ -2336,6 +2346,3 @@
 </script>
 </body>
 </html>
-
-
-
