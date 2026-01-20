@@ -1223,12 +1223,14 @@
     if(!name){ toast("Enter a household name"); return; }
     if(!currentUser){ toast("Sign in first"); return; }
 
-    const hid = uid().replace("id_","h_");
-    await setDoc(doc(db,"households",hid),{
-      name,
-      createdAt: Timestamp.now(),
-      createdByUid: currentUser.uid
-    });
+    try{
+      const hid = uid().replace("id_","h_");
+    
+      await setDoc(doc(db,"households",hid),{
+        name,
+        createdAt: Timestamp.now(),
+        createdByUid: currentUser.uid
+      });
 
     // membership doc (role is literal)
     await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
@@ -1247,7 +1249,11 @@
     await renderHouseholdsList();
     await generateInviteForHousehold(hid);
     subscribeChildren();
+  }catch(e){
+      console.error(e);
+      toast(e?.message ? `Create failed: ${e.message}` : "Create failed (check console)");
   }
+}
 
   async function joinHousehold(){
     const code = ($("inviteCode").value||"").trim().toUpperCase();
@@ -2330,5 +2336,6 @@
 </script>
 </body>
 </html>
+
 
 
