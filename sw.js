@@ -1,4 +1,4 @@
-const CACHE_NAME = "olis-pocket-money-v4";
+const CACHE_NAME = "olis-pocket-money-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -46,3 +46,4 @@ self.addEventListener("message", (event) => {
     }).catch(()=>{});
   }
 });
+
