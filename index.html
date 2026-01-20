@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#7c3aed" />
-  <title>Oli's Pocket Money</title>
+  <title>Oli's Money</title>
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest" />
@@ -373,7 +373,7 @@
     <div class="brand">
       <div class="logo" aria-hidden="true"></div>
       <div style="min-width:0;">
-        <div class="h1">Oli's Pocket Money</div>
+        <div class="h1">Oli's Money</div>
         <div class="sub" id="subline">Sign in to sync with your household</div>
       </div>
     </div>
@@ -1895,7 +1895,7 @@
       // Optional immediate “test” notification via service worker if available
       try{
         if(swReg && swReg.showNotification){
-          await swReg.showNotification("Oli's Pocket Money", {
+          await swReg.showNotification("Oli's Money", {
             body: "Notifications enabled on this device.",
             icon: "icons/icon-192.png"
           });
@@ -2335,3 +2335,4 @@
 </script>
 </body>
 </html>
+
