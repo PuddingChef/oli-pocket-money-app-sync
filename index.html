@@ -1140,12 +1140,28 @@
 
   function updateSubline(childrenList){
     const child = (childrenList||[]).find(c=> c.id === selectedChildId);
-    const hn = selectedHouseholdId ? `Household: ${selectedHouseholdId}` : "No household";
+    const displayHousehold = selectedHouseholdName || selectedHouseholdId;
+    const hn = displayHousehold ? `${displayHousehold}` : "No household";
     const cn = child ? `Child: ${child.name||"Child"}` : "No child selected";
     $("subline").textContent = `${hn} • ${cn}`;
     $("childLabel").textContent = child ? `${child.name||"Child"} • Current period total` : "Current period total";
   }
 
+  // Household Name Fetch
+  async function loadSelectedHouseholdName(){
+  selectedHouseholdName = localStorage.getItem("selectedHouseholdName") || "";
+  if(!selectedHouseholdId) return;
+
+  try{
+    const snap = await getDoc(doc(db, "households", selectedHouseholdId));
+    if(snap.exists()){
+      selectedHouseholdName = String(snap.data().name || "").trim();
+      localStorage.setItem("selectedHouseholdName", selectedHouseholdName);
+    }
+  }catch(e){
+  }
+}
+  
   // Household UI (recent list)
   async function renderHouseholdsList(){
     const wrap = $("householdsList");
@@ -2330,6 +2346,8 @@
     setSyncPill("Sync • Signed in", "good");
 
     await renderHouseholdsList();
+    await loadSelectedHouseholdName();
+    renderAll(); // refresh header text
 
     if(selectedHouseholdId){
       $("childCard").style.display = "block";
@@ -2346,3 +2364,4 @@
 </script>
 </body>
 </html>
+
