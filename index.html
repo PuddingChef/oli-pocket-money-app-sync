@@ -855,7 +855,6 @@
   let currentUser = null;
   let selectedHouseholdId = localStorage.getItem("selectedHouseholdId") || "";
   let selectedChildId = localStorage.getItem("selectedChildId") || "";
-  let selectedHouseholdName = localStorage.getItem("selectedHouseholdName") || "";
 
   function rememberHousehold(hid){
     const list = JSON.parse(localStorage.getItem("recentHouseholds") || "[]");
@@ -1141,28 +1140,12 @@
 
   function updateSubline(childrenList){
     const child = (childrenList||[]).find(c=> c.id === selectedChildId);
-    const displayHousehold = selectedHouseholdName || selectedHouseholdId;
-    const hn = displayHousehold ? `${displayHousehold}` : "No household";
+    const hn = selectedHouseholdId ? `Household: ${selectedHouseholdId}` : "No household";
     const cn = child ? `Child: ${child.name||"Child"}` : "No child selected";
     $("subline").textContent = `${hn} • ${cn}`;
     $("childLabel").textContent = child ? `${child.name||"Child"} • Current period total` : "Current period total";
   }
 
-  // Household Name Fetch
-  async function loadSelectedHouseholdName(){
-  selectedHouseholdName = localStorage.getItem("selectedHouseholdName") || "";
-  if(!selectedHouseholdId) return;
-
-  try{
-    const snap = await getDoc(doc(db, "households", selectedHouseholdId));
-    if(snap.exists()){
-      selectedHouseholdName = String(snap.data().name || "").trim();
-      localStorage.setItem("selectedHouseholdName", selectedHouseholdName);
-    }
-  }catch(e){
-  }
-}
-  
   // Household UI (recent list)
   async function renderHouseholdsList(){
     const wrap = $("householdsList");
@@ -1197,12 +1180,6 @@
           selectedHouseholdId = hid;
           localStorage.setItem("selectedHouseholdId", hid);
           rememberHousehold(hid);
-
-          // IMPORTANT: load name for this household
-          selectedHouseholdName = "";
-          localStorage.removeItem("selectedHouseholdName");
-          await loadSelectedHouseholdName();
-          
           $("householdStatus").textContent = `Selected: ${hid}`;
           toast("Household selected");
           $("childCard").style.display = "block";
@@ -1272,10 +1249,6 @@
       selectedHouseholdId = hid;
       localStorage.setItem("selectedHouseholdId", hid);
       rememberHousehold(hid);
-
-      selectedHouseholdName = name;
-      localStorage.setItem("selectedHouseholdName", name);
-      await loadSelectedHouseholdName();
 
       toast("Household created");
       $("householdStatus").textContent = `Selected: ${hid}`;
@@ -2326,7 +2299,6 @@
   $("refreshBtn").addEventListener("click", async ()=>{
     deviceSettings = loadDeviceSettings();
     await renderHouseholdsList();
-    await loadSelectedHouseholdName();
     subscribeChildren();
     renderAll();
     toast("Refreshed");
@@ -2358,8 +2330,6 @@
     setSyncPill("Sync • Signed in", "good");
 
     await renderHouseholdsList();
-    await loadSelectedHouseholdName();
-    renderAll(); // refresh header text
 
     if(selectedHouseholdId){
       $("childCard").style.display = "block";
@@ -2376,5 +2346,3 @@
 </script>
 </body>
 </html>
-
-
