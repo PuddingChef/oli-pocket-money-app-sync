@@ -854,6 +854,7 @@
   // Household/child selection (per device)
   let currentUser = null;
   let selectedHouseholdId = localStorage.getItem("selectedHouseholdId") || "";
+  let selectedHouseholdName = localStorage.getItem("selectedHouseholdName") || "";
   let selectedChildId = localStorage.getItem("selectedChildId") || "";
 
   function rememberHousehold(hid){
@@ -1140,7 +1141,8 @@
 
   function updateSubline(childrenList){
     const child = (childrenList||[]).find(c=> c.id === selectedChildId);
-    const hn = selectedHouseholdId ? `Household: ${selectedHouseholdId}` : "No household";
+    const householdName = (selectedHouseholdName || "").trim() || selectedHouseholdId;
+    const hn = householdName ? `${householdName}` : "No household";
     const cn = child ? `Child: ${child.name||"Child"}` : "No child selected";
     $("subline").textContent = `${hn} • ${cn}`;
     $("childLabel").textContent = child ? `${child.name||"Child"} • Current period total` : "Current period total";
@@ -1162,6 +1164,12 @@
         if(!snap.exists()) continue;
         const h = snap.data();
 
+        const hName = (h.name || hid);
+        if(hid === selectedHouseholdId && (!selectedHouseholdName || selectedHouseholdName !== hName)){
+          selectedHouseholdName = hName;
+          localStorage.setItem("selectedHouseholdName", hName);
+        }
+
         const card = document.createElement("div");
         card.className = "card";
         card.innerHTML = `
@@ -1178,9 +1186,11 @@
         `;
         card.querySelector('[data-act="select"]').addEventListener("click", ()=>{
           selectedHouseholdId = hid;
+          selectedHouseholdName = hName;
           localStorage.setItem("selectedHouseholdId", hid);
+          localStorage.setItem("selectedHouseholdName", hName);
           rememberHousehold(hid);
-          $("householdStatus").textContent = `Selected: ${hid}`;
+          $("householdStatus").textContent = `Selected: ${hName}`;
           toast("Household selected");
           $("childCard").style.display = "block";
           subscribeChildren();
@@ -1190,7 +1200,7 @@
       }catch(e){}
     }
 
-    $("householdStatus").textContent = selectedHouseholdId ? `Selected: ${selectedHouseholdId}` : "None selected";
+    $("householdStatus").textContent = selectedHouseholdId ? `Selected: ${(selectedHouseholdName||selectedHouseholdId)}` : "None selected";
   }
 
   // Invite code generator
@@ -1247,7 +1257,9 @@
       });
 
       selectedHouseholdId = hid;
+      selectedHouseholdName = name;
       localStorage.setItem("selectedHouseholdId", hid);
+      localStorage.setItem("selectedHouseholdName", name);
       rememberHousehold(hid);
 
       toast("Household created");
@@ -1275,6 +1287,12 @@
 
     const hid = inv.householdId;
 
+    let hName = hid;
+    try{
+      const hs = await getDoc(doc(db,"households",hid));
+      if(hs.exists()) hName = (hs.data()?.name || hid);
+    }catch(e){}
+
     await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
       role: "member",
       joinedAt: Timestamp.now(),
@@ -1282,7 +1300,9 @@
     });
 
     selectedHouseholdId = hid;
+    selectedHouseholdName = hName;
     localStorage.setItem("selectedHouseholdId", hid);
+    localStorage.setItem("selectedHouseholdName", hName);
     rememberHousehold(hid);
 
     toast("Joined household");
@@ -1469,6 +1489,18 @@
   function undoActivity(id){
     const item = state.activity.find(a=>a.id===id);
     if(!item) return;
+
+    // If undoing a chore completion for a Daily/Weekly chore, reset its completion state
+    if(item.type === "chore" && item.choreId){
+      const c = (state.chores || []).find(x=>x.id===item.choreId);
+      if(c && (c.frequency === "daily" || c.frequency === "weekly") && c.lastCompletedAt){
+        const samePeriod = c.frequency === "daily"
+          ? localDateKey(c.lastCompletedAt) === localDateKey(item.at)
+          : isoWeekKey(new Date(c.lastCompletedAt)) === isoWeekKey(new Date(item.at));
+        if(samePeriod) c.lastCompletedAt = null;
+      }
+    }
+
     const val = Number(item.value || 0);
     state.earnedTotal = round2(state.earnedTotal - val);
     state.activity = state.activity.filter(a=>a.id!==id);
@@ -1482,6 +1514,7 @@
     renderActivity();
     renderGoals();
     renderHistory();
+    renderChores();
   }
 
   function openManualAdjust(sign){
@@ -2051,6 +2084,7 @@
           <div class="meta">
             <p class="t">${escapeHTML(c.title)}</p>
             <p class="d">${escapeHTML(c.desc||"")}</p>
+            <p class="d" style="margin-top:6px; color:var(--muted2); font-weight:800;">Last completed: ${fmtDateTime(c.lastCompletedAt)}</p>
             <div style="height:10px"></div>
             <div class="actions">
               <button class="${canDo ? "good" : "ghost"}" data-act="complete">${canDo ? "Complete" : "Done"}</button>
