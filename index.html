@@ -855,6 +855,7 @@
   let currentUser = null;
   let selectedHouseholdId = localStorage.getItem("selectedHouseholdId") || "";
   let selectedChildId = localStorage.getItem("selectedChildId") || "";
+  let selectedHouseholdName = localStorage.getItem("selectedHouseholdName") || "";
 
   function rememberHousehold(hid){
     const list = JSON.parse(localStorage.getItem("recentHouseholds") || "[]");
@@ -1196,6 +1197,12 @@
           selectedHouseholdId = hid;
           localStorage.setItem("selectedHouseholdId", hid);
           rememberHousehold(hid);
+
+          // IMPORTANT: load name for this household
+          selectedHouseholdName = "";
+          localStorage.removeItem("selectedHouseholdName");
+          await loadSelectedHouseholdName();
+          
           $("householdStatus").textContent = `Selected: ${hid}`;
           toast("Household selected");
           $("childCard").style.display = "block";
@@ -1265,6 +1272,10 @@
       selectedHouseholdId = hid;
       localStorage.setItem("selectedHouseholdId", hid);
       rememberHousehold(hid);
+
+      selectedHouseholdName = name;
+      localStorage.setItem("selectedHouseholdName", name);
+      await loadSelectedHouseholdName();
 
       toast("Household created");
       $("householdStatus").textContent = `Selected: ${hid}`;
@@ -2315,6 +2326,7 @@
   $("refreshBtn").addEventListener("click", async ()=>{
     deviceSettings = loadDeviceSettings();
     await renderHouseholdsList();
+    await loadSelectedHouseholdName();
     subscribeChildren();
     renderAll();
     toast("Refreshed");
@@ -2364,4 +2376,5 @@
 </script>
 </body>
 </html>
+
 
