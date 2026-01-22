@@ -387,14 +387,13 @@
         <div class="footnote" id="lastReset">Last reset: never</div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="warn" id="resetTotalBtn">Reset</button>
+        <button class="primary" id="resetTotalBtn">Bank</button>
         <button class="good" id="manualAddBtn">+ Add</button>
         <button class="danger" id="manualSubBtn">− Subtract</button>
       </div>
     </div>
     <div class="footnote">
-      Reset closes the current period and adds it into the <strong>Savings bank</strong> (History tab).
-      Goals subtract from the bank (not this current period total).
+      Bank closes the current period and adds it into the <strong>Savings bank</strong> (History tab).
     </div>
   </div>
 </header>
@@ -520,7 +519,7 @@
   <section class="panel" id="panel-activity" aria-label="Activity">
     <div class="sectionhead">
       <h2>Activity log</h2>
-      <button class="danger" id="clearActivityBtn">Clear (test)</button>
+      <button class="danger" id="clearActivityBtn">Clear</button>
     </div>
 
     <div class="card">
@@ -539,14 +538,14 @@
     <div style="height:10px"></div>
     <div class="grid" id="activityList" style="grid-template-columns:1fr;"></div>
     <div class="empty" id="activityEmpty" style="display:none;">No activity yet.</div>
-    <div class="footnote">Clearing is for testing. Requires passcode <strong>2408</strong>.</div>
+    <div class="footnote">Clearing requires passcode <strong>2408</strong>.</div>
   </section>
 
   <!-- History -->
   <section class="panel" id="panel-history" aria-label="History">
     <div class="sectionhead">
       <h2>History</h2>
-      <button class="danger" id="clearHistoryBtn">Clear (test)</button>
+      <button class="danger" id="clearHistoryBtn">Clear</button>
     </div>
 
     <div class="card">
@@ -749,7 +748,7 @@
           <div style="height:10px"></div>
           <div class="label">Passcode</div>
           <input id="pass" inputmode="numeric" autocomplete="one-time-code" placeholder="2408" />
-          <div class="footnote">For testing resets/clears.</div>
+          <div class="footnote">This cannot be undone.</div>
         `,
         footerButtons: [
           { label:"Cancel", className:"ghost", onClick: ()=>{ closeModal(); resolve(false); } },
@@ -1564,10 +1563,10 @@
 
   async function resetTotal(){
     const ok = await confirmModal({
-      title:"Reset current period?",
-      message:"This will close the current period, store it in History (Savings bank), and start a new period.",
-      confirmLabel:"Reset",
-      confirmClass:"warn"
+      title:"Bank current period?",
+      message:"This will close the current period, add it to the Savings bank, and start a new period.",
+      confirmLabel:"Bank",
+      confirmClass:"primary"
     });
     if(!ok) return;
 
@@ -2007,13 +2006,13 @@
   async function clearActivityTesting(){
     const okPass = await passcodeModal({
       title:"Clear activity log",
-      message:"Enter the passcode to clear the Activity log (testing)."
+      message:"Enter the passcode to clear the Activity log."
     });
     if(!okPass){ toast("Wrong passcode"); return; }
 
     const ok = await confirmModal({
       title:"Clear Activity log?",
-      message:"This will remove all Activity items (testing).",
+      message:"This will remove all Activity items.",
       confirmLabel:"Clear",
       confirmClass:"danger"
     });
@@ -2028,13 +2027,13 @@
   async function clearHistoryTesting(){
     const okPass = await passcodeModal({
       title:"Clear history",
-      message:"Enter the passcode to clear History (testing). This will also reset the Savings bank and goal redemptions."
+      message:"Enter the passcode to clear History. This will reset the Savings bank and goal redemptions."
     });
     if(!okPass){ toast("Wrong passcode"); return; }
 
     const ok = await confirmModal({
       title:"Clear History?",
-      message:"This will remove all History records and reset Savings bank (testing).",
+      message:"This will remove all History records and reset Savings bank.",
       confirmLabel:"Clear",
       confirmClass:"danger"
     });
@@ -2380,3 +2379,4 @@
 </script>
 </body>
 </html>
+
