@@ -1,4 +1,4 @@
-const CACHE_NAME = "olis-pocket-money-v12";
+const CACHE_NAME = "olis-pocket-money-v13";
 const ASSETS = [
   "./",
   "./index.html",

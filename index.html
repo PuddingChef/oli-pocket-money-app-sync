@@ -268,7 +268,9 @@
     .chore .meta{ flex:1 1 auto; min-width:0; }
     .chore .t{ font-weight:950; font-size:15px; margin:0 0 2px; }
     .chore .d{ margin:0; color:var(--muted); font-weight:650; font-size:12px; line-height:1.25; }
-    .chore .actions{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    .chore .actions{ display:flex; flex-direction:column; gap:6px; flex:0 0 auto; align-items:stretch; justify-content:flex-start; }
+.chore .actions .complete{ padding:12px 12px; border-radius:16px; font-size:14px; }
+.iconbtn{ width:40px; padding:9px 0; border-radius:12px; text-align:center; }
 
     /* KPIs */
     .kpi{
@@ -378,7 +380,7 @@
     </div>
   </div>
 
-  <div class="totalcard" aria-live="polite">
+  <div class="totalcard" id="totalCard" aria-live="polite">
     <div class="floatplus" id="floatPlus">+£0.00</div>
     <div class="row" style="align-items:flex-end;">
       <div>
@@ -880,12 +882,24 @@
   };
   const tabs = Array.from(document.querySelectorAll(".tab"));
 
+
+function setTotalCardVisible(show){
+  const el = $("totalCard");
+  if(!el) return;
+  el.style.display = show ? "" : "none";
+}
+
+  // Hide the total card by default (shown on Chores only)
+  setTotalCardVisible(false);
+
+
   function showPanel(name){
     Object.entries(panels).forEach(([k,p])=> p.classList.toggle("active", k===name));
     tabs.forEach(t=>{
       const active = t.dataset.tab === name;
       t.classList.toggle("active", active);
     });
+    setTotalCardVisible(name === "chores");
   }
   function switchTab(name){
     showPanel(name);
@@ -2318,23 +2332,25 @@
       const canDo = choreCompletionAllowed(c);
 
       card.innerHTML = `
-        <div class="chore">
-          <div class="badge">
-            <div style="font-size:14px;">${fmtGBP(c.value)}</div>
-            <div style="font-size:10px; font-weight:900; color:var(--muted); margin-top:2px;">${freqLabel}</div>
-          </div>
-          <div class="meta">
-            <p class="t">${escapeHTML(c.title)}</p>
-            <p class="d">${escapeHTML(c.desc||"")}</p>
-            <div style="height:10px"></div>
-            <div class="actions">
-              <button class="${canDo ? "good" : "ghost"}" data-act="complete">${canDo ? "Complete" : "Done"}</button>
-              <button class="ghost" data-act="edit">Edit</button>
-              <button class="danger" data-act="delete">Delete</button>
-            </div>
-          </div>
-        </div>
-      `;
+  <div class="chore">
+    <div class="badge">
+      <div style="font-size:18px; font-weight:950;">${fmtGBP(c.value)}</div>
+      <div style="font-size:10px; font-weight:900; color:var(--muted); margin-top:4px;">${freqLabel}</div>
+    </div>
+
+    <div class="meta">
+      <p class="t">${escapeHTML(c.title)}</p>
+      <p class="d">${escapeHTML(c.desc||"")}</p>
+      ${c.lastCompletedAt ? `<div class="footnote" style="margin-top:6px;">Last completed: <strong>${fmtDateTime(c.lastCompletedAt)}</strong></div>` : ``}
+    </div>
+
+    <div class="actions">
+      <button class="${canDo ? "good complete" : "ghost complete"}" data-act="complete">${canDo ? "Complete" : "Done"}</button>
+      <button class="ghost small" data-act="edit">Edit</button>
+      <button class="danger small iconbtn" data-act="delete" title="Delete">✕</button>
+    </div>
+  </div>
+`;
 
       card.querySelector('[data-act="complete"]').addEventListener("click", ()=> completeChore(c.id));
       card.querySelector('[data-act="edit"]').addEventListener("click", ()=> openChoreEditor(c));
@@ -2502,6 +2518,21 @@
     renderGoals();
   }
 
+
+
+function setAuthFieldsVisible(show){
+  // show/hide email+password fields and Sign in/Create account buttons
+  try{
+    const emailWrap = $("email")?.closest("div");
+    const passWrap  = $("password")?.closest("div");
+    if(emailWrap) emailWrap.style.display = show ? "" : "none";
+    if(passWrap)  passWrap.style.display  = show ? "" : "none";
+  }catch(e){}
+  if($("signInBtn")) $("signInBtn").style.display = show ? "inline-block" : "none";
+  if($("signUpBtn")) $("signUpBtn").style.display = show ? "inline-block" : "none";
+}
+
+
   // --- Auth flows ---
   async function doSignIn(){
     const email = ($("email").value||"").trim();
@@ -2586,6 +2617,8 @@
 
     if(!currentUser){
       $("authStatus").textContent = "Signed out";
+      setAuthFieldsVisible(true);
+      setTotalCardVisible(false);
       $("syncPill").textContent = "Sync • Signed out";
       $("signOutBtn").style.display = "none";
       $("householdCard").style.display = "none";
@@ -2601,6 +2634,8 @@
     }
 
     $("authStatus").textContent = "Signed in";
+    setAuthFieldsVisible(false);
+    setTotalCardVisible(false);
     $("signOutBtn").style.display = "inline-block";
     $("householdCard").style.display = "block";
     setSyncPill("Sync • Signed in", "good");
