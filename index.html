@@ -1,0 +1,2624 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#7c3aed" />
+  <title>Oli's Money</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#111a33;
+      --card2:#0f1730;
+      --text:#eef2ff;
+      --muted:#b8c0ff;
+      --muted2:#9aa4ff;
+      --accent:#7c3aed;
+      --good:#22c55e;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+      --line:rgba(255,255,255,.10);
+      --shadow: 0 16px 40px rgba(0,0,0,.35);
+      --r: 18px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background:
+        radial-gradient(1200px 600px at 10% 0%, rgba(124,58,237,.25), transparent 55%),
+        radial-gradient(900px 500px at 90% 10%, rgba(34,197,94,.18), transparent 50%),
+        radial-gradient(900px 600px at 60% 110%, rgba(59,130,246,.14), transparent 55%),
+        var(--bg);
+      color:var(--text);
+      -webkit-tap-highlight-color: transparent;
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      padding:16px 16px 10px;
+      backdrop-filter: blur(10px);
+      background: rgba(11,16,32,.72);
+      border-bottom: 1px solid var(--line);
+    }
+    .title{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      margin-bottom:10px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight:950;
+      min-width:0;
+    }
+    .logo{
+      width:42px;
+      height:42px;
+      border-radius:14px;
+      flex:0 0 auto;
+      box-shadow: 0 10px 30px rgba(124,58,237,.25);
+      object-fit: cover;
+      background: transparent;
+    }
+    .logo:before{ content:""; }
+    .brand .h1{ font-size:18px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .brand .sub{ font-size:12px; color:var(--muted2); margin-top:2px; font-weight:750; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: var(--muted);
+      font-weight:850;
+      font-size:12px;
+      white-space:nowrap;
+    }
+
+    main{
+      padding: 14px 14px 90px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    button{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding:10px 12px;
+      border-radius: 14px;
+      font-weight:900;
+      font-size:13px;
+      letter-spacing:.2px;
+      cursor:pointer;
+      transition: transform .08s ease;
+      user-select:none;
+    }
+    button:active{ transform: translateY(1px) scale(.99); }
+    button.primary{ background: rgba(124,58,237,.25); border-color: rgba(124,58,237,.55); }
+    button.good{ background: rgba(34,197,94,.20); border-color: rgba(34,197,94,.55); }
+    button.warn{ background: rgba(245,158,11,.18); border-color: rgba(245,158,11,.55); }
+    button.danger{ background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.55); }
+    button.ghost{ background: rgba(255,255,255,.03); }
+    button.small{ padding:9px 10px; border-radius:12px; font-size:12px; }
+
+    input, textarea, select{
+      width:100%;
+      padding: 11px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      outline:none;
+      font-weight:850;
+      font-size:14px;
+    }
+    textarea{ resize:none; min-height:90px; font-weight:750; }
+
+    .card{
+      background: linear-gradient(180deg, rgba(17,26,51,.85), rgba(15,23,48,.85));
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding: 12px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.25);
+    }
+
+    .sectionhead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin: 14px 2px 10px;
+    }
+    .sectionhead h2{
+      margin:0;
+      font-size:14px;
+      letter-spacing:.3px;
+      color: var(--muted);
+      font-weight:950;
+      text-transform: uppercase;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+    }
+    @media (min-width: 560px){
+      .grid{ grid-template-columns: 1fr 1fr; }
+    }
+
+    .row{
+      display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    }
+
+    .divider{ height:1px; background: var(--line); margin:12px 0; }
+
+    .empty{
+      text-align:center;
+      padding:18px 10px;
+      color: var(--muted);
+      font-weight:750;
+      line-height:1.35;
+    }
+
+    .label{ color:var(--muted2); font-weight:800; font-size:12px; }
+    .big{
+      font-size:34px;
+      font-weight:950;
+      letter-spacing:.2px;
+      line-height:1;
+    }
+    .footnote{
+      color: var(--muted2);
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.35;
+      margin-top: 10px;
+    }
+
+    .tabs{
+      position: fixed; left:0; right:0; bottom:0;
+      background: rgba(11,16,32,.78);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--line);
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:6px;
+      padding: 8px 10px;
+      z-index:20;
+    }
+    .tab{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+      padding: 10px 8px;
+      border-radius: 16px;
+      font-weight:950;
+      font-size:12px;
+      color: var(--muted);
+      border:1px solid transparent;
+      background: transparent;
+    }
+    .tab small{ font-size:10px; font-weight:850; opacity:.9; }
+    .tab.active{
+      color: var(--text);
+      background: rgba(124,58,237,.18);
+      border-color: rgba(124,58,237,.5);
+    }
+
+    .panel{ display:none; }
+    .panel.active{ display:block; }
+
+    /* Total card */
+    .totalcard{
+      background: linear-gradient(180deg, rgba(17,26,51,.9), rgba(15,23,48,.85));
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding:14px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+    }
+    .floatplus{
+      position:absolute;
+      right:14px;
+      top:12px;
+      padding: 8px 10px;
+      border-radius:999px;
+      background: rgba(34,197,94,.20);
+      border: 1px solid rgba(34,197,94,.55);
+      color: var(--text);
+      font-weight:950;
+      opacity:0;
+      transform: translateY(8px);
+      pointer-events:none;
+    }
+    .floatplus.show{ animation: floatUp .75s ease-out forwards; }
+    @keyframes floatUp{
+      0%{ opacity:0; transform: translateY(10px); }
+      15%{ opacity:1; }
+      100%{ opacity:0; transform: translateY(-14px); }
+    }
+
+    /* Chores */
+    .chore{ display:flex; gap:10px; align-items:flex-start; }
+    .badge{
+      flex:0 0 auto;
+      width:60px;
+      height:60px;
+      border-radius:16px;
+      display:grid;
+      place-items:center;
+      background: radial-gradient(circle at 30% 30%, rgba(34,197,94,.25), rgba(124,58,237,.18));
+      border:1px solid rgba(255,255,255,.12);
+      font-weight:950;
+      text-align:center;
+      padding:6px 4px;
+      line-height:1.05;
+    }
+    .chore .meta{ flex:1 1 auto; min-width:0; }
+    .chore .t{ font-weight:950; font-size:15px; margin:0 0 2px; }
+    .chore .d{ margin:0; color:var(--muted); font-weight:650; font-size:12px; line-height:1.25; }
+    .chore .actions{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+
+    /* KPIs */
+    .kpi{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    .kpi .mini{
+      padding:12px;
+      border-radius: var(--r);
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.04);
+    }
+    .kpi .mini .v{ font-size:18px; font-weight:950; }
+    .kpi .mini .l{ font-size:12px; color:var(--muted2); font-weight:850; margin-top:2px; }
+
+    /* Modals */
+    .modalback{
+      position: fixed; inset:0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:flex-end;
+      justify-content:center;
+      z-index:50;
+      padding: 12px;
+    }
+    .modalback.show{ display:flex; }
+    .modal{
+      width:min(680px, 100%);
+      background: rgba(17,26,51,.96);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 22px;
+      box-shadow: 0 30px 70px rgba(0,0,0,.55);
+      overflow:hidden;
+      transform: translateY(12px);
+      animation: pop .12s ease-out forwards;
+    }
+    @keyframes pop{ to{ transform: translateY(0); } }
+    .modal header{
+      position:relative;
+      top:auto;
+      padding: 14px 14px 10px;
+      background: transparent;
+      border-bottom:1px solid var(--line);
+      backdrop-filter:none;
+    }
+    .modal header .mh{ font-weight:950; font-size:14px; }
+    .modal .body{ padding: 12px 14px 14px; }
+    .modal .footer{
+      padding: 12px 14px 14px;
+      border-top:1px solid var(--line);
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 78px;
+      transform: translateX(-50%);
+      background: rgba(17,26,51,.96);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-weight:900;
+      font-size:13px;
+      box-shadow: 0 18px 40px rgba(0,0,0,.55);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .16s ease, transform .16s ease;
+      z-index:60;
+      white-space:nowrap;
+    }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(-2px); }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: var(--muted);
+      font-weight:850;
+      font-size:12px;
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="title">
+    <div class="brand">
+      <img class="logo" src="icons/icon.svg" alt="" aria-hidden="true">
+      <div style="min-width:0;">
+        <div class="h1">Oli's Money</div>
+        <div class="sub" id="subline">Sign in to sync with your household</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span class="pill" id="syncPill">Sync • Signed out</span>
+      <button class="small ghost" id="accountBtn" title="Account / Settings">👤</button>
+    </div>
+  </div>
+
+  <div class="totalcard" aria-live="polite">
+    <div class="floatplus" id="floatPlus">+£0.00</div>
+    <div class="row" style="align-items:flex-end;">
+      <div>
+        <div class="label" id="childLabel">Current period total</div>
+        <div class="big" id="totalDisplay">£0.00</div>
+        <div class="footnote" id="lastReset">Last reset: never</div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="primary" id="resetTotalBtn">Bank</button>
+        <button class="good" id="manualAddBtn">+ Add</button>
+        <button class="danger" id="manualSubBtn">− Subtract</button>
+      </div>
+    </div>
+    <div class="footnote">
+      Bank closes the current period and adds it into the <strong>Savings bank</strong> (History tab).
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Onboarding -->
+  <section class="panel active" id="panel-onboarding" aria-label="Onboarding">
+    <div class="sectionhead">
+      <h2>Account & sync</h2>
+      <button class="ghost" id="refreshBtn">Refresh</button>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div style="font-weight:950;">Sign in</div>
+        <span class="pill" id="authStatus">Signed out</span>
+      </div>
+      <div class="divider"></div>
+
+      <div class="grid">
+        <div>
+          <div class="label">Email</div>
+          <input id="email" inputmode="email" autocomplete="email" placeholder="name@example.com" />
+        </div>
+        <div>
+          <div class="label">Password</div>
+          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+        </div>
+      </div>
+
+      <div style="height:10px"></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="primary" id="signInBtn">Sign in</button>
+        <button class="good" id="signUpBtn">Create account</button>
+        <button class="danger" id="signOutBtn" style="display:none;">Sign out</button>
+      </div>
+
+      <div class="footnote">
+        Sign in on both phones with your own accounts. Use invite codes to join the same household.
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="card" id="householdCard" style="display:none;">
+      <div class="row">
+        <div style="font-weight:950;">Household</div>
+        <span class="pill" id="householdStatus">None selected</span>
+      </div>
+      <div class="divider"></div>
+
+      <div class="grid">
+        <div>
+          <div class="label">Create a household</div>
+          <input id="householdName" placeholder="e.g., Kerr Family" maxlength="40" />
+          <div style="height:8px"></div>
+          <button class="primary" id="createHouseholdBtn">Create household</button>
+        </div>
+        <div>
+          <div class="label">Join via invite code</div>
+          <input id="inviteCode" placeholder="e.g., B7KQ29" maxlength="20" />
+          <div style="height:8px"></div>
+          <button class="good" id="joinHouseholdBtn">Join household</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="row">
+        <div class="label">Your Households</div>
+        <button class="ghost small" id="newInviteBtn" title="Generate a new invite code for the selected household">New invite</button>
+      </div>
+
+      <div style="height:10px"></div>
+      <div id="householdsList" class="grid"></div>
+      <div class="empty" id="householdsEmpty" style="display:none;">No households yet. Create one, or join using an invite code.</div>
+
+      <div class="footnote">
+        Household data is saved against your account regardless of what device you are using.
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="card" id="childCard" style="display:none;">
+      <div class="row">
+        <div style="font-weight:950;">Children</div>
+        <span class="pill" id="childStatus">None selected</span>
+      </div>
+      <div class="divider"></div>
+
+      <div class="grid">
+        <div>
+          <div class="label">Add child profile</div>
+          <input id="childName" placeholder="e.g., Oli" maxlength="30" />
+          <div style="height:8px"></div>
+          <button class="primary" id="addChildBtn">Add child</button>
+        </div>
+        <div>
+          <div class="label">Select child</div>
+          <select id="childSelect"></select>
+          <div style="height:8px"></div>
+          <button class="good" id="enterAppBtn">Open pocket money app</button>
+        </div>
+      </div>
+
+      <div class="footnote">
+        Each child profile has separate synced data within the same household.
+      </div>
+    </div>
+  </section>
+
+  <!-- Chores -->
+  <section class="panel" id="panel-chores" aria-label="Chores">
+    <div class="sectionhead">
+      <h2>Chores</h2>
+      <button class="primary" id="addChoreBtn">+ Add chore</button>
+    </div>
+    <div class="grid" id="choresList"></div>
+    <div class="empty" id="choresEmpty" style="display:none;">No chores yet. Add a few and tap <strong>Complete</strong>.</div>
+  </section>
+
+  <!-- Activity -->
+  <section class="panel" id="panel-activity" aria-label="Activity">
+    <div class="sectionhead">
+      <h2>Activity log</h2>
+      <button class="danger" id="clearActivityBtn">Clear</button>
+    </div>
+
+    <div class="card">
+      <div class="kpi">
+        <div class="mini">
+          <div class="v" id="activityCount">0</div>
+          <div class="l">Items in log</div>
+        </div>
+        <div class="mini">
+          <div class="v" id="periodTotal">£0.00</div>
+          <div class="l">Current period total</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+    <div class="grid" id="activityList" style="grid-template-columns:1fr;"></div>
+    <div class="empty" id="activityEmpty" style="display:none;">No activity yet.</div>
+    <div class="footnote">Clearing requires passcode <strong>2408</strong>.</div>
+  </section>
+
+  <!-- History -->
+  <section class="panel" id="panel-history" aria-label="History">
+    <div class="sectionhead">
+      <h2>History</h2>
+      <button class="danger" id="clearHistoryBtn">Clear</button>
+    </div>
+
+    <div class="card">
+      <div class="kpi">
+        <div class="mini">
+          <div class="v" id="bankAvailable">£0.00</div>
+          <div class="l">Savings bank (available)</div>
+        </div>
+        <div class="mini">
+          <div class="v" id="bankTotal">£0.00</div>
+          <div class="l">Savings bank (total)</div>
+        </div>
+      </div>
+      <div class="footnote">
+        Savings bank is the sum of all reset periods. Redeemed goals subtract from <strong>available</strong> bank amount.
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="card">
+      <div class="row" style="gap:12px;">
+        <div class="chip" style="flex:1 1 auto; justify-content:space-between;">
+          <span>View</span>
+          <select id="historyMode" style="width:auto; min-width:160px; padding:8px 10px; border-radius:12px;">
+            <option value="records">Reset periods</option>
+            <option value="week">By week</option>
+            <option value="month">By month</option>
+          </select>
+        </div>
+        <div class="chip" style="flex:1 1 auto; justify-content:space-between;">
+          <span>Filter</span>
+          <select id="historyFilter" style="width:auto; min-width:160px; padding:8px 10px; border-radius:12px;"></select>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+    <div class="grid" id="historyList" style="grid-template-columns:1fr;"></div>
+    <div class="empty" id="historyEmpty" style="display:none;">No history yet. Reset the current period to create history records.</div>
+  </section>
+
+  <!-- Goals -->
+  <section class="panel" id="panel-goals" aria-label="Goals">
+    <div class="sectionhead">
+      <h2>Saving goals</h2>
+      <button class="primary" id="addGoalBtn">+ Add goal</button>
+    </div>
+
+    <div class="card">
+      <div class="kpi">
+        <div class="mini">
+          <div class="v" id="goalBalance">£0.00</div>
+          <div class="l">Savings bank available</div>
+        </div>
+        <div class="mini">
+          <div class="v" id="goalSpent">£0.00</div>
+          <div class="l">Spent on redeemed goals</div>
+        </div>
+      </div>
+      <div class="footnote">
+        Redeeming a goal subtracts from the <strong>Savings bank</strong>, not the current period total.
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+    <div class="grid" id="goalsList" style="grid-template-columns:1fr;"></div>
+    <div class="empty" id="goalsEmpty" style="display:none;">No goals yet. Add something to save for.</div>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Tabs" id="tabs" style="display:none;">
+  <button class="tab active" data-tab="chores">Chores<small>List</small></button>
+  <button class="tab" data-tab="activity">Activity<small>Log</small></button>
+  <button class="tab" data-tab="history">History<small>Bank</small></button>
+  <button class="tab" data-tab="goals">Goals<small>Save</small></button>
+</nav>
+
+<!-- Modal -->
+<div class="modalback" id="modalBack" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal">
+    <header><div class="mh" id="modalTitle">Modal</div></header>
+    <div class="body" id="modalBody"></div>
+    <div class="footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Saved</div>
+
+<script type="module">
+  // Firebase SDK (CDN modules)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged,
+    createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getFirestore, doc, collection, addDoc, setDoc, getDoc, deleteDoc, getDocs, onSnapshot, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  // --- Your Firebase config (embedded as provided) ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyB-bupS8b_y8m1ERpl1-bu-YTH-qk0H-J0",
+    authDomain: "oli-pocket-money.firebaseapp.com",
+    projectId: "oli-pocket-money",
+    storageBucket: "oli-pocket-money.firebasestorage.app",
+    messagingSenderId: "766122450122",
+    appId: "1:766122450122:web:02939b30bce0a3dc966833",
+    measurementId: "G-BFZSBD86W8"
+  };
+
+  // PWA service worker
+  let swReg = null;
+  async function registerSW(){
+    if(!("serviceWorker" in navigator)) return;
+    try{ swReg = await navigator.serviceWorker.register("sw.js"); }catch(e){}
+  }
+  registerSW();
+
+  // Utilities
+  const $ = (id) => document.getElementById(id);
+  const nowISO = () => new Date().toISOString();
+  const uid = () => "id_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+  const round2 = (n) => Math.round(Number(n)*100)/100;
+  const fmtGBP = (v) => Number(v||0).toLocaleString("en-GB",{style:"currency",currency:"GBP"});
+  const fmtDateTime = (iso) => iso ? new Date(iso).toLocaleString("en-GB",{dateStyle:"medium",timeStyle:"short"}) : "never";
+  const escapeHTML = (s) => String(s||"")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+  const toMoney = (raw) => {
+    const n = Number(String(raw||"").replace(/[^0-9.\-]/g,""));
+    return Number.isFinite(n) ? Math.round(n*100)/100 : 0;
+  };
+
+  function localDateKey(iso){
+    const d = iso ? new Date(iso) : new Date();
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  function isoWeekKey(date){
+    const d = new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate()+4-dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    const weekNo = Math.ceil((((d-yearStart)/86400000)+1)/7);
+    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2,"0")}`;
+  }
+  function monthKey(date){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}`; }
+
+  // Toast
+  let toastTimer=null;
+  function toast(msg){
+    $("toast").textContent = msg;
+    $("toast").classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> $("toast").classList.remove("show"), 1400);
+  }
+
+  // Modal
+  function openModal({ title, bodyHTML, footerButtons }){
+    $("modalTitle").textContent = title;
+    $("modalBody").innerHTML = bodyHTML;
+    $("modalFooter").innerHTML = "";
+    footerButtons.forEach(btn=>{
+      const b = document.createElement("button");
+      b.textContent = btn.label;
+      b.className = btn.className || "";
+      b.addEventListener("click",()=> btn.onClick && btn.onClick());
+      $("modalFooter").appendChild(b);
+    });
+    $("modalBack").classList.add("show");
+    $("modalBack").setAttribute("aria-hidden","false");
+  }
+  function closeModal(){
+    $("modalBack").classList.remove("show");
+    $("modalBack").setAttribute("aria-hidden","true");
+    $("modalBody").innerHTML = "";
+    $("modalFooter").innerHTML = "";
+  }
+  $("modalBack").addEventListener("click",(e)=>{ if(e.target === $("modalBack")) closeModal(); });
+
+  function confirmModal({ title="Are you sure?", message="This can’t be undone.", confirmLabel="Yes", confirmClass="warn", cancelLabel="Cancel" }){
+    return new Promise(resolve=>{
+      openModal({
+        title,
+        bodyHTML: `<div style="font-weight:850; line-height:1.35; color: var(--text);">${message}</div>`,
+        footerButtons: [
+          { label: cancelLabel, className: "ghost", onClick: ()=>{ closeModal(); resolve(false); } },
+          { label: confirmLabel, className: confirmClass, onClick: ()=>{ closeModal(); resolve(true); } }
+        ]
+      });
+    });
+  }
+
+  function passcodeModal({ title, message }){
+    return new Promise(resolve=>{
+      openModal({
+        title,
+        bodyHTML: `
+          <div style="font-weight:850; line-height:1.35; color: var(--text);">${message}</div>
+          <div style="height:10px"></div>
+          <div class="label">Passcode</div>
+          <input id="pass" inputmode="numeric" autocomplete="one-time-code" placeholder="2408" />
+          <div class="footnote">This cannot be undone.</div>
+        `,
+        footerButtons: [
+          { label:"Cancel", className:"ghost", onClick: ()=>{ closeModal(); resolve(false); } },
+          { label:"Confirm", className:"danger", onClick: ()=>{
+            const v = ($("pass")?.value || "").trim();
+            closeModal();
+            resolve(v === "2408");
+          }}
+        ]
+      });
+      setTimeout(()=> $("pass")?.focus(), 50);
+    });
+  }
+
+  // Firebase init
+  const fbApp = initializeApp(firebaseConfig);
+  const auth = getAuth(fbApp);
+  const db = getFirestore(fbApp);
+
+  // --- Device settings (not synced; per phone) ---
+  const DEVICE_SETTINGS_KEY = "pm_device_settings_v1";
+  function loadDeviceSettings(){
+    try{
+      const s = JSON.parse(localStorage.getItem(DEVICE_SETTINGS_KEY) || "{}");
+      return {
+        weeklyReminderEnabled: !!s.weeklyReminderEnabled,
+        weeklyReminderTime: typeof s.weeklyReminderTime === "string" ? s.weeklyReminderTime : "18:00",
+        notificationsEnabled: !!s.notificationsEnabled,
+        lastReminderDate: typeof s.lastReminderDate === "string" ? s.lastReminderDate : ""
+      };
+    }catch{
+      return { weeklyReminderEnabled:false, weeklyReminderTime:"18:00", notificationsEnabled:false, lastReminderDate:"" };
+    }
+  }
+  function saveDeviceSettings(s){
+    localStorage.setItem(DEVICE_SETTINGS_KEY, JSON.stringify(s));
+  }
+  let deviceSettings = loadDeviceSettings();
+
+  // --- App state per child (synced) ---
+  function defaultState(){
+    return {
+      version: 7,
+      chores: [
+        { id: uid(), title:"Make the bed", desc:"Tidy up and straighten the duvet", value:0.50, frequency:"daily", lastCompletedAt:null },
+        { id: uid(), title:"Clear the table", desc:"After dinner, plates and cutlery away", value:0.75, frequency:"anytime", lastCompletedAt:null },
+        { id: uid(), title:"Help with recycling", desc:"Sort and put out the right bins", value:1.00, frequency:"weekly", lastCompletedAt:null }
+      ],
+      earnedTotal: 0,
+      lastResetAt: null,
+      periodStartAt: nowISO(),
+      activity: [],
+      history: [],
+      goals: [
+        { id: uid(), title:"LEGO set", desc:"Something awesome", cost:12.99, createdAt: nowISO(), redeemedAt: null }
+      ],
+      bankSpent: 0,
+      goalRedemptions: [],
+      settings: {
+        soundEnabled: true,
+        keepActivityOnReset: false
+      }
+    };
+  }
+
+  function mergeDefaults(s){
+    const d = defaultState();
+    const o = (typeof s === "object" && s) ? s : {};
+    const m = { ...d, ...o };
+    m.settings = { ...d.settings, ...(o.settings || {}) };
+
+    m.chores = Array.isArray(o.chores) ? o.chores.map(c => ({
+      id: c.id || uid(),
+      title: String(c.title || "").slice(0,40),
+      desc: String(c.desc || "").slice(0,90),
+      value: round2(Number(c.value || 0)),
+      frequency: (c.frequency==="daily"||c.frequency==="weekly"||c.frequency==="anytime") ? c.frequency : "anytime",
+      lastCompletedAt: c.lastCompletedAt || null
+    })) : d.chores;
+
+    m.activity = Array.isArray(o.activity) ? o.activity : [];
+    m.history  = Array.isArray(o.history) ? o.history : [];
+    m.goals    = Array.isArray(o.goals) ? o.goals : [];
+
+    m.earnedTotal = round2(Number(m.earnedTotal || 0));
+    m.bankSpent = round2(Number((o.bankSpent ?? o.goalsSpent ?? m.bankSpent) || 0));
+    m.goalRedemptions = Array.isArray(o.goalRedemptions) ? o.goalRedemptions : [];
+    m.version = 7;
+    if(!m.periodStartAt) m.periodStartAt = nowISO();
+    return m;
+  }
+
+  // Local cache per household+child for fast loads/offline
+  const cacheKey = (hid,cid)=> `pm_cache_${hid}_${cid}`;
+  function cacheLoad(hid,cid){
+    try{ const raw = localStorage.getItem(cacheKey(hid,cid)); return raw ? JSON.parse(raw) : null; }catch{ return null; }
+  }
+  function cacheSave(hid,cid,obj){
+    try{ localStorage.setItem(cacheKey(hid,cid), JSON.stringify(obj)); }catch{}
+  }
+
+  // Household/child selection (per device)
+  let currentUser = null;
+  let selectedHouseholdId = localStorage.getItem("selectedHouseholdId") || "";
+  let selectedHouseholdName = localStorage.getItem("selectedHouseholdName") || "";
+  let selectedChildId = localStorage.getItem("selectedChildId") || "";
+
+  function rememberHousehold(hid){
+    const list = JSON.parse(localStorage.getItem("recentHouseholds") || "[]");
+    const next = [hid, ...list.filter(x=>x!==hid)].slice(0,10);
+    localStorage.setItem("recentHouseholds", JSON.stringify(next));
+  }
+
+  // Firestore subscriptions
+  let childrenUnsub = null;
+  let stateUnsub = null;
+  let applyingRemote = false;
+  let lastLocalWriteMs = 0;
+  let saveTimer = null;
+
+  // Active child state
+  let state = mergeDefaults(cacheLoad(selectedHouseholdId, selectedChildId));
+
+  // Tabs/panels
+  const panels = {
+    onboarding: $("panel-onboarding"),
+    chores: $("panel-chores"),
+    activity: $("panel-activity"),
+    history: $("panel-history"),
+    goals: $("panel-goals")
+  };
+  const tabs = Array.from(document.querySelectorAll(".tab"));
+
+  function showPanel(name){
+    Object.entries(panels).forEach(([k,p])=> p.classList.toggle("active", k===name));
+    tabs.forEach(t=>{
+      const active = t.dataset.tab === name;
+      t.classList.toggle("active", active);
+    });
+  }
+  function switchTab(name){
+    showPanel(name);
+    renderAll();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  tabs.forEach(t=> t.addEventListener("click", ()=> switchTab(t.dataset.tab)));
+
+  // Simple auto-enter: if signed in and household+child already selected, go straight to app
+  function autoEnterIfReady(){
+    if(!currentUser) return;
+    if(!selectedHouseholdId || !selectedChildId) return;
+
+    $("tabs").style.display = "grid";
+    showPanel("chores");
+    subscribeState();
+    renderAll();
+  }
+
+  // Sync pill
+  function setSyncPill(text, tone=""){
+    $("syncPill").textContent = text;
+    $("syncPill").style.borderColor =
+      tone==="good" ? "rgba(34,197,94,.55)" :
+      tone==="warn" ? "rgba(245,158,11,.55)" :
+      "rgba(255,255,255,.12)";
+    $("syncPill").style.background =
+      tone==="good" ? "rgba(34,197,94,.18)" :
+      tone==="warn" ? "rgba(245,158,11,.14)" :
+      "rgba(255,255,255,.05)";
+    $("syncPill").style.color = tone==="good" ? "var(--text)" : "var(--muted)";
+  }
+
+  // Sound: simple ka-ching
+  let audioCtx = null;
+  function playKaChing(){
+    if(!state.settings?.soundEnabled) return;
+    try{
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const t0 = audioCtx.currentTime;
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+      gain.connect(audioCtx.destination);
+
+      const o1 = audioCtx.createOscillator();
+      o1.type = "sine";
+      o1.frequency.setValueAtTime(880, t0);
+      o1.frequency.exponentialRampToValueAtTime(1320, t0 + 0.08);
+      o1.connect(gain);
+
+      const o2 = audioCtx.createOscillator();
+      o2.type = "triangle";
+      o2.frequency.setValueAtTime(660, t0 + 0.06);
+      o2.frequency.exponentialRampToValueAtTime(990, t0 + 0.14);
+      o2.connect(gain);
+
+      o1.start(t0); o1.stop(t0 + 0.18);
+      o2.start(t0 + 0.06); o2.stop(t0 + 0.22);
+    }catch(e){}
+  }
+  document.addEventListener("pointerdown", ()=> {
+    if(audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(()=>{});
+  }, { once:true });
+
+  // Animated count up
+  let anim = { raf:null, from:0, to:0, start:0, dur:520 };
+  function animateTotal(toValue){
+    cancelAnimationFrame(anim.raf);
+    anim.from = Number($("totalDisplay").dataset.value || state.earnedTotal || 0);
+    anim.to = Number(toValue || 0);
+    anim.start = performance.now();
+
+    function step(t){
+      const p = Math.min(1, (t - anim.start) / anim.dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      const v = anim.from + (anim.to - anim.from) * e;
+      $("totalDisplay").textContent = fmtGBP(v);
+      $("totalDisplay").dataset.value = String(v);
+      if(p < 1) anim.raf = requestAnimationFrame(step);
+      else {
+        $("totalDisplay").textContent = fmtGBP(anim.to);
+        $("totalDisplay").dataset.value = String(anim.to);
+      }
+    }
+    anim.raf = requestAnimationFrame(step);
+  }
+
+  function showFloatPlus(amount){
+    const sign = amount >= 0 ? "+" : "−";
+    $("floatPlus").textContent = `${sign}${fmtGBP(Math.abs(amount))}`;
+    $("floatPlus").classList.remove("show");
+    void $("floatPlus").offsetWidth;
+    $("floatPlus").classList.add("show");
+  }
+
+  // Bank totals
+  function bankTotal(){
+    return round2((state.history || []).reduce((sum, r) => sum + Number(r.total || 0), 0));
+  }
+  function bankAvailable(){
+    return round2(bankTotal() - Number(state.bankSpent || 0));
+  }
+
+  // History grouping
+  function groupHistory(mode){
+    const groups = new Map();
+    for(const rec of (state.history || [])){
+      const endDate = new Date(rec.endAt);
+      const key = mode === "week" ? isoWeekKey(endDate) : monthKey(endDate);
+      const prev = groups.get(key) || { key, total:0, records:0 };
+      prev.total = round2(prev.total + Number(rec.total||0));
+      prev.records += 1;
+      groups.set(key, prev);
+    }
+    return Array.from(groups.values()).sort((a,b)=> a.key < b.key ? 1 : -1);
+  }
+
+  function historyFilters(){
+    const mode = $("historyMode").value;
+    const opts = [{ value:"all", label:"All" }];
+    if(mode === "records"){
+      const months = Array.from(new Set((state.history||[]).map(h => monthKey(new Date(h.endAt))))).sort().reverse();
+      months.forEach(m=> opts.push({ value:m, label:m }));
+    } else if(mode === "week"){
+      groupHistory("week").forEach(g=> opts.push({ value:g.key, label:g.key }));
+    } else {
+      groupHistory("month").forEach(g=> opts.push({ value:g.key, label:g.key }));
+    }
+    return opts;
+  }
+
+  // Firestore refs
+  function childStateRef(hid,cid){
+    return doc(db, "households", hid, "children", cid, "state", "current");
+  }
+
+  // Save (debounced) to Firestore
+  function scheduleSave(){
+    if(applyingRemote) return;
+    if(!currentUser || !selectedHouseholdId || !selectedChildId) return;
+
+    cacheSave(selectedHouseholdId, selectedChildId, state);
+
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async ()=>{
+      try{
+        const ref = childStateRef(selectedHouseholdId, selectedChildId);
+        const payload = {
+          schemaVersion: state.version,
+          updatedAt: Timestamp.now(),
+          updatedByUid: currentUser.uid,
+          state: state
+        };
+        lastLocalWriteMs = Date.now();
+        await setDoc(ref, payload, { merge:true });
+        setSyncPill("Sync • Up to date", "good");
+      }catch(e){
+        setSyncPill("Sync • Error saving", "warn");
+      }
+    }, 650);
+  }
+
+  // Subscribe to a child's state
+  function subscribeState(){
+    if(stateUnsub){ stateUnsub(); stateUnsub = null; }
+
+    if(!currentUser || !selectedHouseholdId || !selectedChildId) return;
+
+    const cached = cacheLoad(selectedHouseholdId, selectedChildId);
+    if(cached) state = mergeDefaults(cached);
+
+    setSyncPill("Sync • Connecting…", "warn");
+
+    const ref = childStateRef(selectedHouseholdId, selectedChildId);
+    stateUnsub = onSnapshot(ref, (snap)=>{
+      if(!snap.exists()){
+        seedChildStateIfMissing().catch(()=>{});
+        return;
+      }
+      const data = snap.data();
+      const remote = mergeDefaults(data.state || null);
+
+      const updatedBy = data.updatedByUid || "";
+      const remoteMs = data.updatedAt?.toMillis?.() || 0;
+
+      if(updatedBy === currentUser.uid && remoteMs && remoteMs <= (lastLocalWriteMs + 400)) {
+        return;
+      }
+
+      applyingRemote = true;
+      state = remote;
+      cacheSave(selectedHouseholdId, selectedChildId, state);
+      applyingRemote = false;
+
+      setSyncPill("Sync • Updated", "good");
+      renderAll();
+    }, ()=>{
+      setSyncPill("Sync • Permission issue", "warn");
+    });
+
+    renderAll();
+  }
+
+  async function seedChildStateIfMissing(){
+    if(!currentUser || !selectedHouseholdId || !selectedChildId) return;
+    const ref = childStateRef(selectedHouseholdId, selectedChildId);
+    const seed = mergeDefaults(defaultState());
+    await setDoc(ref, {
+      schemaVersion: seed.version,
+      updatedAt: Timestamp.now(),
+      updatedByUid: currentUser.uid,
+      state: seed
+    }, { merge:true });
+  }
+
+  // Children subscription/list
+  function subscribeChildren(){
+    if(childrenUnsub){ childrenUnsub(); childrenUnsub = null; }
+    if(stateUnsub){ stateUnsub(); stateUnsub = null; }
+
+    if(!currentUser || !selectedHouseholdId) return;
+
+    const col = collection(db, "households", selectedHouseholdId, "children");
+    childrenUnsub = onSnapshot(col, (snap)=>{
+      const children = [];
+      snap.forEach(d=> children.push({ id:d.id, ...d.data() }));
+      children.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||"")));
+
+      const sel = $("childSelect");
+      sel.innerHTML = children.map(c=> `<option value="${c.id}">${escapeHTML(c.name||"Child")}</option>`).join("");
+
+      if(selectedChildId && children.some(c=>c.id === selectedChildId)){
+        sel.value = selectedChildId;
+      } else {
+        selectedChildId = children[0]?.id || "";
+        localStorage.setItem("selectedChildId", selectedChildId);
+        sel.value = selectedChildId;
+      }
+
+      $("childStatus").textContent = selectedChildId ? "Selected" : "None selected";
+      updateSubline(children);
+
+      // Key change: if we are already "ready", jump straight into the app
+      autoEnterIfReady();
+    }, ()=> toast("Cannot read children (check rules/membership)"));
+  }
+
+  function updateSubline(childrenList){
+    const child = (childrenList||[]).find(c=> c.id === selectedChildId);
+    const hn = selectedHouseholdId ? `${selectedHouseholdName || selectedHouseholdId}` : "No household";
+    const cn = child ? `Child: ${child.name||"Child"}` : "No child selected";
+    $("subline").textContent = `${hn} • ${cn}`;
+    $("childLabel").textContent = child ? `${child.name||"Child"} • Current period total` : "Current period total";
+  }
+
+  // Household list (synced per user; cross-device) — Pattern C
+  // We maintain a simple per-user index:
+  //   users/{uid}/households/{householdId}  { householdId, householdName, role, joinedAt, uid }
+  let householdsUnsub = null;
+  let userHouseholds = [];
+
+  function stopHouseholdSub(){
+    if(householdsUnsub){ householdsUnsub(); householdsUnsub = null; }
+    userHouseholds = [];
+  }
+
+  function userHouseholdsCol(){
+    return collection(db, "users", currentUser.uid, "households");
+  }
+
+  async function upsertUserHouseholdIndex({ householdId, householdName, role }){
+    if(!currentUser || !householdId) return;
+    const ref = doc(db, "users", currentUser.uid, "households", householdId);
+    await setDoc(ref, {
+      householdId,
+      householdName: householdName || householdId,
+      role: role || "member",
+      joinedAt: Timestamp.now(),
+      uid: currentUser.uid
+    }, { merge:true });
+  }
+
+
+  // One-time migration helper (keeps the app usable while moving away from localStorage):
+  // If you have old households stored locally, this will copy them into the per-user index.
+  async function migrateLocalHouseholdsToUserIndex(){
+    if(!currentUser) return;
+
+    const ids = new Set();
+    try{
+      const arr = JSON.parse(localStorage.getItem("recentHouseholds") || "[]");
+      (arr || []).forEach(id=> id && ids.add(id));
+    }catch(e){}
+    if(selectedHouseholdId) ids.add(selectedHouseholdId);
+
+    for(const hid of ids){
+      try{
+        const hSnap = await getDoc(doc(db, "households", hid));
+        if(!hSnap.exists()) continue;
+        const householdName = hSnap.data()?.name || hid;
+
+        let role = "member";
+        try{
+          const memSnap = await getDoc(doc(db, "households", hid, "members", currentUser.uid));
+          if(memSnap.exists()) role = memSnap.data()?.role || "member";
+        }catch(e){}
+
+        await upsertUserHouseholdIndex({ householdId: hid, householdName, role });
+      }catch(e){
+        // Ignore: not a member, missing household, or rules deny.
+      }
+    }
+  }
+
+  async function subscribeUserHouseholds(){
+    stopHouseholdSub();
+    if(!currentUser) return;
+
+    const colRef = userHouseholdsCol();
+
+    householdsUnsub = onSnapshot(colRef, async (snap)=>{
+      const list = [];
+      snap.forEach(d=>{
+        const data = d.data() || {};
+        list.push({
+          householdId: data.householdId || d.id,
+          name: data.householdName || data.name || d.id,
+          role: data.role || "member",
+          joinedAt: data.joinedAt || null
+        });
+      });
+
+      list.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||"")));
+
+      // Self-heal stale index rows (e.g., you were removed from a household)
+      const verified = [];
+      for(const h of list){
+        try{
+          await getDoc(doc(db, "households", h.householdId)); // requires membership per rules
+          verified.push(h);
+        }catch(e){
+          // No longer authorised -> remove from your own index so it disappears everywhere.
+          try{ await deleteDoc(doc(db, "users", currentUser.uid, "households", h.householdId)); }catch{}
+        }
+      }
+
+      userHouseholds = verified;
+      renderHouseholdsList();
+    }, (e)=>{
+      console.error("Households subscribe error:", e);
+      toast("Cannot load households (check membership / rules)");
+      userHouseholds = [];
+      renderHouseholdsList();
+    });
+  }
+
+  async function leaveHousehold(hid, role){
+    if(!currentUser || !hid) return;
+
+    const ok = await confirmModal({
+      title: role === "owner" ? "Leave household as owner?" : "Leave household?",
+      message: role === "owner"
+        ? "You are the <strong>owner</strong>. Leaving will remove your access from this device and any others. The household will remain in the database. Continue?"
+        : "This will remove your access to this household on all devices. Continue?",
+      confirmLabel: "Leave",
+      confirmClass: "danger"
+    });
+    if(!ok) return;
+
+    try{
+      await deleteDoc(doc(db, "households", hid, "members", currentUser.uid));
+    }catch(e){
+      toast("Could not leave (check rules)");
+      return;
+    }
+
+    try{ await deleteDoc(doc(db, "users", currentUser.uid, "households", hid)); }catch{}
+
+    if(selectedHouseholdId === hid){
+      selectedHouseholdId = "";
+      selectedHouseholdName = "";
+      localStorage.setItem("selectedHouseholdId", "");
+      localStorage.setItem("selectedHouseholdName", "");
+      $("childCard").style.display = "none";
+      $("subline").textContent = "Create or join a household to begin";
+      if(childrenUnsub){ childrenUnsub(); childrenUnsub=null; }
+      if(stateUnsub){ stateUnsub(); stateUnsub=null; }
+      $("tabs").style.display = "none";
+      showPanel("onboarding");
+    }
+
+    toast("Left household");
+  }
+
+  async function openMembersManager(hid, hName){
+    if(!currentUser || !hid) return;
+
+    openModal({
+      title: `Members • ${escapeHTML(hName || hid)}`,
+      bodyHTML: `<div class="empty" id="membersLoading">Loading…</div>`,
+      footerButtons: [
+        { label:"Close", className:"ghost", onClick: closeModal }
+      ]
+    });
+
+    try{
+      const snap = await getDocs(collection(db, "households", hid, "members"));
+      const members = [];
+      snap.forEach(d=>{
+        const data = d.data() || {};
+        members.push({ uid: d.id, role: data.role || "member" });
+      });
+      members.sort((a,b)=> a.role === b.role ? (a.uid < b.uid ? -1 : 1) : (a.role === "owner" ? -1 : 1));
+
+      const rows = members.map(m=>{
+        const isSelf = m.uid === currentUser.uid;
+        const canRemove = !isSelf; // owner rule enforced server-side
+        return `
+          <div class="row" style="padding:10px 0; border-bottom:1px solid var(--line);">
+            <div style="min-width:0;">
+              <div style="font-weight:900;">${escapeHTML(m.uid)}</div>
+              <div class="footnote" style="margin-top:3px;">Role: <strong>${escapeHTML(m.role)}</strong>${isSelf ? " • (you)" : ""}</div>
+            </div>
+            ${canRemove ? `<button class="danger small" data-uid="${escapeHTML(m.uid)}">Remove</button>` : `<span class="pill">You</span>`}
+          </div>
+        `;
+      }).join("");
+
+      $("modalBody").innerHTML = `
+        <div style="font-weight:950; margin-bottom:8px;">Members</div>
+        <div class="footnote" style="margin-top:-2px;">Removing a member revokes their access. Their app will self-clean the household from their list on next sign-in.</div>
+        <div style="height:10px"></div>
+        <div>${rows || `<div class="empty">No members found.</div>`}</div>
+      `;
+
+      Array.from($("modalBody").querySelectorAll("button[data-uid]")).forEach(btn=>{
+        btn.addEventListener("click", async ()=>{
+          const uidToRemove = btn.getAttribute("data-uid");
+          const ok = await confirmModal({
+            title:"Remove member?",
+            message:`Remove <strong>${escapeHTML(uidToRemove)}</strong> from this household?`,
+            confirmLabel:"Remove",
+            confirmClass:"danger"
+          });
+          if(!ok) return;
+          try{
+            await deleteDoc(doc(db, "households", hid, "members", uidToRemove));
+            toast("Member removed");
+            closeModal();
+            openMembersManager(hid, hName);
+          }catch(e){
+            toast("Could not remove (check owner role / rules)");
+          }
+        });
+      });
+    }catch(e){
+      console.error("Members load error:", e);
+      $("modalBody").innerHTML = `<div class="empty">Could not load members (check rules).</div>`;
+    }
+  }
+
+  // Household UI (from user index)
+  function renderHouseholdsList(){
+    const wrap = $("householdsList");
+    wrap.innerHTML = "";
+
+    $("householdsEmpty").style.display = userHouseholds.length ? "none" : "block";
+
+    // Keep selection name in sync (for header/subline)
+    const selected = userHouseholds.find(h=> h.householdId === selectedHouseholdId);
+    if(selected){
+      selectedHouseholdName = selected.name || selectedHouseholdName || selectedHouseholdId;
+      localStorage.setItem("selectedHouseholdName", selectedHouseholdName);
+      $("householdStatus").textContent = `Selected: ${selectedHouseholdName}`;
+      $("childCard").style.display = "block";
+    }else{
+      if(selectedHouseholdId){
+        // If local storage had an old householdId, clear it.
+        selectedHouseholdId = "";
+        selectedHouseholdName = "";
+        localStorage.setItem("selectedHouseholdId", "");
+        localStorage.setItem("selectedHouseholdName", "");
+      }
+      $("householdStatus").textContent = "None selected";
+      $("childCard").style.display = "none";
+      $("subline").textContent = "Create or join a household to begin";
+      showPanel("onboarding");
+    }
+
+    userHouseholds.forEach(h=>{
+      const isSel = h.householdId === selectedHouseholdId;
+      const roleLabel = h.role === "owner" ? "Owner" : "Member";
+      const rolePillStyle = h.role === "owner"
+        ? 'style="border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.14); color: var(--text);"'
+        : '';
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="row">
+          <div style="min-width:0;">
+            <div style="font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(h.name || h.householdId)}</div>
+            <div class="footnote" style="margin-top:4px;">ID: ${escapeHTML(h.householdId)}</div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center;">
+            <span class="pill" ${rolePillStyle}>${roleLabel}</span>
+            <button class="${isSel ? "good" : "ghost"} small" data-act="select">Select</button>
+            <button class="ghost small" data-act="invite">Invite</button>
+            ${h.role === "owner" ? `<button class="ghost small" data-act="members">Members</button>` : ``}
+            <button class="danger small" data-act="leave">Leave</button>
+          </div>
+        </div>
+      `;
+
+      card.querySelector('[data-act="select"]').addEventListener("click", ()=>{
+        selectedHouseholdId = h.householdId;
+        selectedHouseholdName = h.name || h.householdId;
+        localStorage.setItem("selectedHouseholdId", selectedHouseholdId);
+        localStorage.setItem("selectedHouseholdName", selectedHouseholdName);
+        $("householdStatus").textContent = `Selected: ${selectedHouseholdName}`;
+        toast("Household selected");
+        $("childCard").style.display = "block";
+        subscribeChildren();
+        renderAll();
+      });
+
+      card.querySelector('[data-act="invite"]').addEventListener("click", ()=>{
+        if(h.role !== "owner"){ toast("Only the owner can invite"); return; }
+        generateInviteForHousehold(h.householdId);
+      });
+
+      const membersBtn = card.querySelector('[data-act="members"]');
+      if(membersBtn) membersBtn.addEventListener("click", ()=> openMembersManager(h.householdId, h.name));
+
+      card.querySelector('[data-act="leave"]').addEventListener("click", ()=> leaveHousehold(h.householdId, h.role));
+
+      wrap.appendChild(card);
+    });
+  }
+
+  // Invite code generator
+  function randomInviteCode(){
+    const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let s="";
+    for(let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
+    return s;
+  }
+
+  async function generateInviteForHousehold(hid){
+    if(!currentUser || !hid){ toast("Select a household first"); return; }
+    const code = randomInviteCode();
+    await setDoc(doc(db,"invites",code),{
+      householdId: hid,
+      active: true,
+      createdAt: Timestamp.now(),
+      createdByUid: currentUser.uid
+    });
+    openModal({
+      title:"Invite code created",
+      bodyHTML: `
+        <div style="font-weight:950; font-size:18px;">${code}</div>
+        <div class="footnote">Share this code with another account to join this household.</div>
+      `,
+      footerButtons: [
+        { label:"Copy", className:"good", onClick: async ()=>{
+          try{ await navigator.clipboard.writeText(code); toast("Copied"); }catch{ toast("Could not copy"); }
+          closeModal();
+        }},
+        { label:"Close", className:"ghost", onClick: closeModal }
+      ]
+    });
+  }
+
+  // Household create/join
+  async function createHousehold(){
+    const name = ($("householdName").value||"").trim();
+    if(!name){ toast("Enter a household name"); return; }
+    if(!currentUser){ toast("Sign in first"); return; }
+
+    try{
+      const hid = uid().replace("id_","h_");
+
+      await setDoc(doc(db,"households",hid),{
+        name,
+        createdAt: Timestamp.now(),
+        createdByUid: currentUser.uid
+      });
+
+      await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
+        uid: currentUser.uid,
+        role: "owner",
+        joinedAt: Timestamp.now()
+      });
+
+      await upsertUserHouseholdIndex({ householdId: hid, householdName: name, role: "owner" });
+
+      selectedHouseholdId = hid;
+      selectedHouseholdName = name;
+      localStorage.setItem("selectedHouseholdId", hid);
+      localStorage.setItem("selectedHouseholdName", name);
+
+      toast("Household created");
+      $("householdStatus").textContent = `Selected: ${name}`;
+      $("childCard").style.display = "block";
+
+      renderHouseholdsList();
+      await generateInviteForHousehold(hid);
+      subscribeChildren();
+    }catch(e){
+      console.error(e);
+      toast(e?.message ? `Create failed: ${e.message}` : "Create failed (check console)");
+    }
+  }
+
+  async function joinHousehold(){
+    const code = ($("inviteCode").value||"").trim().toUpperCase();
+    if(!code){ toast("Enter an invite code"); return; }
+    if(!currentUser){ toast("Sign in first"); return; }
+
+    try{
+      const invSnap = await getDoc(doc(db,"invites",code));
+      if(!invSnap.exists()){ toast("Invite not found"); return; }
+      const inv = invSnap.data();
+      if(!inv.active){ toast("Invite not active"); return; }
+
+      const hid = inv.householdId;
+
+      // If you are already a member (e.g., owner joining on another device), do NOT overwrite your role.
+      let roleToKeep = "member";
+      try{
+        const memSnap = await getDoc(doc(db,"households",hid,"members",currentUser.uid));
+        if(memSnap.exists()){
+          roleToKeep = memSnap.data()?.role || "member";
+        }else{
+          await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
+            uid: currentUser.uid,
+            role: "member",
+            joinedAt: Timestamp.now(),
+            inviteCode: code
+          });
+          roleToKeep = "member";
+        }
+      }catch(e){
+        // Not authorised yet (expected when first joining) — create membership using the invite.
+        await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
+          uid: currentUser.uid,
+          role: "member",
+          joinedAt: Timestamp.now(),
+          inviteCode: code
+        });
+        roleToKeep = "member";
+      }
+
+      // Now you should be a member, so reading the household doc is allowed.
+      let householdName = hid;
+      try{
+        const hSnap = await getDoc(doc(db,"households",hid));
+        if(hSnap.exists()) householdName = hSnap.data()?.name || hid;
+      }catch(e){}
+
+      await upsertUserHouseholdIndex({ householdId: hid, householdName, role: roleToKeep });
+
+      selectedHouseholdId = hid;
+      selectedHouseholdName = householdName;
+      localStorage.setItem("selectedHouseholdId", hid);
+      localStorage.setItem("selectedHouseholdName", householdName);
+
+      toast("Joined household");
+      $("householdStatus").textContent = `Selected: ${householdName}`;
+      $("childCard").style.display = "block";
+
+      renderHouseholdsList();
+      subscribeChildren();
+    }catch(e){
+      console.error(e);
+      toast("Join failed (check console / rules)");
+    }
+  }
+
+  // Children create/select/enter
+  async function addChild(){
+    const name = ($("childName").value||"").trim();
+    if(!name){ toast("Enter child name"); return; }
+    if(!currentUser || !selectedHouseholdId){ toast("Select a household first"); return; }
+
+    const childRef = await addDoc(collection(db,"households",selectedHouseholdId,"children"),{
+      name,
+      createdAt: Timestamp.now()
+    });
+
+    const seed = mergeDefaults(defaultState());
+    await setDoc(childStateRef(selectedHouseholdId, childRef.id),{
+      schemaVersion: seed.version,
+      updatedAt: Timestamp.now(),
+      updatedByUid: currentUser.uid,
+      state: seed
+    }, { merge:true });
+
+    toast("Child added");
+    $("childName").value = "";
+  }
+
+  function enterApp(){
+    if(!selectedHouseholdId){ toast("Select a household"); return; }
+    if(!selectedChildId){ toast("Select a child"); return; }
+
+    selectedChildId = $("childSelect").value || selectedChildId;
+    localStorage.setItem("selectedChildId", selectedChildId);
+
+    $("tabs").style.display = "grid";
+    showPanel("chores");
+    subscribeState();
+    renderAll();
+  }
+
+  // ---- Chores CRUD ----
+  function openChoreEditor(chore){
+    const isEdit = !!chore;
+    const c = chore || { id: uid(), title:"", desc:"", value:0.5, frequency:"anytime", lastCompletedAt:null };
+
+    openModal({
+      title: isEdit ? "Edit chore" : "Add chore",
+      bodyHTML: `
+        <div class="label">Title</div>
+        <input id="cTitle" maxlength="40" placeholder="e.g., Tidy room" value="${escapeHTML(c.title)}" />
+        <div style="height:10px"></div>
+
+        <div class="label">Short description</div>
+        <textarea id="cDesc" maxlength="90" placeholder="What needs doing?">${escapeHTML(c.desc||"")}</textarea>
+        <div style="height:10px"></div>
+
+        <div class="grid">
+          <div>
+            <div class="label">Value (GBP)</div>
+            <input id="cValue" inputmode="decimal" placeholder="1.00" value="${Number(c.value||0).toFixed(2)}" />
+          </div>
+          <div>
+            <div class="label">Frequency</div>
+            <select id="cFreq">
+              <option value="anytime">Anytime</option>
+              <option value="daily">Daily (once per day)</option>
+              <option value="weekly">Weekly (once per week)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="footnote">Daily/weekly chores can only be completed once per period to prevent double-counting.</div>
+      `,
+      footerButtons: [
+        { label:"Cancel", className:"ghost", onClick: closeModal },
+        { label: isEdit ? "Save" : "Add", className:"primary", onClick: ()=>{
+          const title = ($("cTitle")?.value || "").trim();
+          const desc  = ($("cDesc")?.value || "").trim();
+          const value = toMoney($("cValue")?.value);
+          const freq  = ($("cFreq")?.value || "anytime");
+
+          if(!title){ toast("Add a title"); return; }
+          if(value <= 0){ toast("Value must be > £0"); return; }
+
+          if(isEdit){
+            const idx = state.chores.findIndex(x=>x.id===c.id);
+            if(idx>=0){
+              state.chores[idx] = { ...state.chores[idx], title, desc, value, frequency: freq };
+            }
+          }else{
+            state.chores.unshift({ id:c.id, title, desc, value, frequency: freq, lastCompletedAt:null });
+          }
+
+          scheduleSave();
+          closeModal();
+          toast(isEdit ? "Saved" : "Added");
+          renderChores();
+        }}
+      ]
+    });
+
+    setTimeout(()=> {
+      $("cFreq").value = (c.frequency==="daily"||c.frequency==="weekly"||c.frequency==="anytime") ? c.frequency : "anytime";
+      $("cTitle")?.focus();
+    }, 40);
+  }
+
+  async function deleteChore(id){
+    const c = state.chores.find(x=>x.id===id);
+    if(!c) return;
+    const ok = await confirmModal({
+      title:"Delete chore?",
+      message:`Delete <strong>${escapeHTML(c.title)}</strong>?`,
+      confirmLabel:"Delete",
+      confirmClass:"danger"
+    });
+    if(!ok) return;
+    state.chores = state.chores.filter(x=>x.id!==id);
+    scheduleSave();
+    toast("Deleted");
+    renderChores();
+  }
+
+  function choreCompletionAllowed(chore){
+    const freq = chore.frequency || "anytime";
+    if(freq === "anytime") return true;
+
+    const last = chore.lastCompletedAt;
+    if(!last) return true;
+
+    const now = new Date();
+    if(freq === "daily"){
+      return localDateKey(last) !== localDateKey(nowISO());
+    }
+    if(freq === "weekly"){
+      return isoWeekKey(new Date(last)) !== isoWeekKey(now);
+    }
+    return true;
+  }
+
+  function completeChore(choreId){
+    const c = state.chores.find(x=>x.id===choreId);
+    if(!c) return;
+
+    if(!choreCompletionAllowed(c)){
+      toast(c.frequency === "daily" ? "Already completed today" : "Already completed this week");
+      return;
+    }
+
+    const amount = Number(c.value || 0);
+    if(amount <= 0) return;
+
+    c.lastCompletedAt = nowISO();
+
+    state.earnedTotal = round2(state.earnedTotal + amount);
+    state.activity.unshift({
+      id: uid(),
+      type: "chore",
+      choreId: c.id,
+      title: c.title,
+      value: amount,
+      at: nowISO()
+    });
+
+    scheduleSave();
+
+    playKaChing();
+    showFloatPlus(amount);
+    animateTotal(state.earnedTotal);
+    toast("Ka-ching!");
+
+    renderActivity();
+    renderGoals();
+    renderHistory();
+    renderChores();
+  }
+
+  function undoActivity(id){
+    const item = state.activity.find(a=>a.id===id);
+    if(!item) return;
+    const val = Number(item.value || 0);
+    state.earnedTotal = round2(state.earnedTotal - val);
+    state.activity = state.activity.filter(a=>a.id!==id);
+
+    scheduleSave();
+
+    showFloatPlus(-val);
+    animateTotal(state.earnedTotal);
+    toast("Undone");
+
+    renderActivity();
+    renderGoals();
+    renderHistory();
+  }
+
+  function openManualAdjust(sign){
+    const isAdd = sign === 1;
+    openModal({
+      title: isAdd ? "Add amount" : "Subtract amount",
+      bodyHTML: `
+        <div style="font-weight:850; color:var(--muted); line-height:1.35;">
+          Enter a figure to ${isAdd ? "add to" : "subtract from"} the current period total.
+          It will be logged so you can undo it.
+        </div>
+        <div style="height:10px"></div>
+        <div class="label">Amount (GBP)</div>
+        <input id="mValue" inputmode="decimal" placeholder="0.00" />
+      `,
+      footerButtons: [
+        { label:"Cancel", className:"ghost", onClick: closeModal },
+        { label: isAdd ? "Add" : "Subtract", className: isAdd ? "good" : "danger", onClick: ()=>{
+          const v = toMoney($("mValue")?.value);
+          if(v <= 0){ toast("Enter a value > £0"); return; }
+          const amount = round2(v * sign);
+
+          state.earnedTotal = round2(state.earnedTotal + amount);
+          state.activity.unshift({
+            id: uid(),
+            type: "manual",
+            title: isAdd ? "Manual add" : "Manual subtract",
+            value: amount,
+            at: nowISO()
+          });
+
+          scheduleSave();
+
+          closeModal();
+          showFloatPlus(amount);
+          animateTotal(state.earnedTotal);
+          toast("Adjusted");
+
+          renderActivity();
+          renderGoals();
+          renderHistory();
+        }}
+      ]
+    });
+    setTimeout(()=> $("mValue")?.focus(), 40);
+  }
+
+  async function resetTotal(){
+    const ok = await confirmModal({
+      title:"Bank current period?",
+      message:"This will close the current period, add it to the Savings bank, and start a new period.",
+      confirmLabel:"Bank",
+      confirmClass:"primary"
+    });
+    if(!ok) return;
+
+    const endAt = nowISO();
+    const periodTotal = round2(state.earnedTotal);
+
+    state.history.unshift({
+      id: uid(),
+      startAt: state.periodStartAt || state.lastResetAt || endAt,
+      endAt,
+      total: periodTotal,
+      items: (state.activity || []).length
+    });
+
+    state.lastResetAt = endAt;
+    state.periodStartAt = endAt;
+    state.earnedTotal = 0;
+
+    if(!state.settings?.keepActivityOnReset){
+      state.activity = [];
+    }
+
+    scheduleSave();
+    animateTotal(0);
+    toast("Reset complete");
+
+    renderAll();
+  }
+
+  // Goals
+  function openGoalEditor(goal){
+    const isEdit = !!goal;
+    const g = goal || { id: uid(), title:"", desc:"", cost: 5.0, createdAt: nowISO(), redeemedAt: null };
+
+    openModal({
+      title: isEdit ? "Edit goal" : "Add goal",
+      bodyHTML: `
+        <div class="label">Goal title</div>
+        <input id="gTitle" maxlength="40" placeholder="e.g., Football" value="${escapeHTML(g.title)}" />
+        <div style="height:10px"></div>
+
+        <div class="label">Short description</div>
+        <textarea id="gDesc" maxlength="90" placeholder="What is it for?">${escapeHTML(g.desc||"")}</textarea>
+        <div style="height:10px"></div>
+
+        <div class="label">Cost (GBP)</div>
+        <input id="gCost" inputmode="decimal" placeholder="10.00" value="${Number(g.cost||0).toFixed(2)}" />
+      `,
+      footerButtons: [
+        { label:"Cancel", className:"ghost", onClick: closeModal },
+        { label: isEdit ? "Save" : "Add", className:"primary", onClick: ()=>{
+          const title = ($("gTitle")?.value || "").trim();
+          const desc  = ($("gDesc")?.value || "").trim();
+          const cost  = toMoney($("gCost")?.value);
+
+          if(!title){ toast("Add a title"); return; }
+          if(cost <= 0){ toast("Cost must be > £0"); return; }
+
+          if(isEdit){
+            const idx = state.goals.findIndex(x=>x.id===g.id);
+            if(idx>=0){
+              state.goals[idx] = { ...state.goals[idx], title, desc, cost };
+            }
+          }else{
+            state.goals.unshift({ id:g.id, title, desc, cost, createdAt: nowISO(), redeemedAt: null });
+          }
+
+          scheduleSave();
+          closeModal();
+          toast(isEdit ? "Saved" : "Added");
+          renderGoals();
+        }}
+      ]
+    });
+
+    setTimeout(()=> $("gTitle")?.focus(), 40);
+  }
+
+  async function deleteGoal(id){
+    const g = state.goals.find(x=>x.id===id);
+    if(!g) return;
+
+    const ok = await confirmModal({
+      title:"Delete goal?",
+      message:`Delete <strong>${escapeHTML(g.title)}</strong>?`,
+      confirmLabel:"Delete",
+      confirmClass:"danger"
+    });
+    if(!ok) return;
+
+    state.goals = state.goals.filter(x=>x.id!==id);
+    scheduleSave();
+    toast("Deleted");
+    renderGoals();
+  }
+
+  async function redeemGoal(id){
+    const g = state.goals.find(x=>x.id===id);
+    if(!g) return;
+    if(g.redeemedAt){ toast("Already redeemed"); return; }
+
+    const available = bankAvailable();
+
+    const ok = await confirmModal({
+      title: available < g.cost ? "Not enough in Savings bank" : "Redeem goal?",
+      message: available < g.cost
+        ? `Savings bank available is <strong>${fmtGBP(available)}</strong>, but this goal costs <strong>${fmtGBP(g.cost)}</strong>. Redeem anyway?`
+        : `Redeem <strong>${escapeHTML(g.title)}</strong> for <strong>${fmtGBP(g.cost)}</strong>? (Savings bank available will reduce.)`,
+      confirmLabel: "Redeem",
+      confirmClass: available < g.cost ? "warn" : "good"
+    });
+    if(!ok) return;
+
+    g.redeemedAt = nowISO();
+    state.bankSpent = round2(Number(state.bankSpent || 0) + Number(g.cost || 0));
+
+    state.goalRedemptions = state.goalRedemptions || [];
+    state.goalRedemptions.unshift({ id: uid(), goalId: g.id, title: g.title, cost: g.cost, at: g.redeemedAt });
+
+    scheduleSave();
+    toast("Redeemed");
+    renderGoals();
+    renderHistory();
+  }
+
+  // Export/import
+  function exportPayload(){
+    return {
+      exportedAt: nowISO(),
+      householdId: selectedHouseholdId,
+      childId: selectedChildId,
+      stateVersion: state.version,
+      state: state
+    };
+  }
+
+  async function exportState(){
+    const payload = exportPayload();
+    const json = JSON.stringify(payload, null, 2);
+
+    const blob = new Blob([json], { type:"application/json" });
+    const file = new File([blob], `pocketmoney-${selectedHouseholdId}-${selectedChildId}.json`, { type:"application/json" });
+
+    try{
+      if(navigator.canShare && navigator.canShare({ files:[file] })){
+        await navigator.share({ title:"Pocket Money Export", text:"Pocket Money export file", files:[file] });
+        toast("Shared");
+        return;
+      }
+    }catch(e){}
+
+    try{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast("Downloaded");
+      return;
+    }catch(e){}
+
+    try{
+      await navigator.clipboard.writeText(json);
+      toast("Copied to clipboard");
+    }catch(e){
+      toast("Export failed");
+    }
+  }
+
+  async function importStateFlow(){
+    openModal({
+      title:"Import (overwrite)",
+      bodyHTML: `
+        <div style="font-weight:850; color:var(--muted); line-height:1.35;">
+          Paste an exported JSON payload. This will overwrite the currently selected child’s data.
+        </div>
+        <div style="height:10px"></div>
+        <textarea id="importJson" placeholder="Paste JSON here..."></textarea>
+      `,
+      footerButtons: [
+        { label:"Cancel", className:"ghost", onClick: closeModal },
+        { label:"Import", className:"warn", onClick: async ()=>{
+          const raw = ($("importJson")?.value || "").trim();
+          if(!raw){ toast("Paste JSON first"); return; }
+
+          let parsed = null;
+          try{ parsed = JSON.parse(raw); }catch{ toast("Invalid JSON"); return; }
+          const nextState = mergeDefaults(parsed.state || null);
+
+          const ok = await confirmModal({
+            title:"Overwrite this child’s data?",
+            message:"This will replace chores, activity, history, goals and settings for the selected child.",
+            confirmLabel:"Overwrite",
+            confirmClass:"danger"
+          });
+          if(!ok) return;
+
+          state = nextState;
+          scheduleSave();
+          closeModal();
+          toast("Imported");
+          renderAll();
+        }}
+      ]
+    });
+  }
+
+  // Settings modal (account button)
+  async function openAccountModal(){
+    const signedIn = !!currentUser;
+
+    const sound = !!state.settings?.soundEnabled;
+    const keepAct = !!state.settings?.keepActivityOnReset;
+
+    const weeklyEnabled = !!deviceSettings.weeklyReminderEnabled;
+    const weeklyTime = deviceSettings.weeklyReminderTime || "18:00";
+    const notifEnabled = !!deviceSettings.notificationsEnabled;
+
+    openModal({
+      title: "Account & Settings",
+      bodyHTML: `
+        <div class="row">
+          <div style="font-weight:950;">Status</div>
+          <span class="pill">${signedIn ? "Signed in" : "Signed out"}</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="font-weight:950; margin-bottom:6px;">Quick actions</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="primary" id="manageSetupBtn">Manage setup</button>
+          <button class="ghost" id="goToChoresBtn">Go to chores</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="font-weight:950; margin-bottom:6px;">App settings (synced per child)</div>
+        <div class="grid">
+          <div class="card" style="padding:10px;">
+            <div class="row">
+              <div>
+                <div style="font-weight:900;">Sound</div>
+                <div class="footnote" style="margin-top:4px;">Ka-ching on completion</div>
+              </div>
+              <button class="${sound ? "good" : "ghost"} small" id="toggleSoundBtn">${sound ? "On" : "Off"}</button>
+            </div>
+          </div>
+          <div class="card" style="padding:10px;">
+            <div class="row">
+              <div>
+                <div style="font-weight:900;">Keep activity on reset</div>
+                <div class="footnote" style="margin-top:4px;">If off, activity clears each period</div>
+              </div>
+              <button class="${keepAct ? "good" : "ghost"} small" id="toggleKeepBtn">${keepAct ? "On" : "Off"}</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div style="font-weight:950; margin-bottom:6px;">Device reminders (this phone)</div>
+        <div class="card" style="padding:10px;">
+          <div class="row">
+            <div>
+              <div style="font-weight:900;">Weekly reset reminder</div>
+              <div class="footnote" style="margin-top:4px;">Sunday prompt after selected time (in-app). Notifications are best-effort.</div>
+            </div>
+            <button class="${weeklyEnabled ? "good" : "ghost"} small" id="toggleWeeklyBtn">${weeklyEnabled ? "On" : "Off"}</button>
+          </div>
+          <div style="height:10px"></div>
+          <div class="row">
+            <div style="flex:1 1 auto;">
+              <div class="label">Reminder time (Sunday)</div>
+              <input id="weeklyTime" type="time" value="${escapeHTML(weeklyTime)}" />
+            </div>
+            <div style="flex:1 1 auto;">
+              <div class="label">Notifications</div>
+              <button class="${notifEnabled ? "good" : "ghost"} small" id="notifBtn">${notifEnabled ? "Enabled" : "Enable"}</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="font-weight:950; margin-bottom:6px;">Backup & tools</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="primary" id="exportBtn">Export</button>
+          <button class="warn" id="importBtn">Import</button>
+        </div>
+
+        <div class="footnote">
+          Export/import applies to the currently selected household + child.
+        </div>
+      `,
+      footerButtons: [
+        { label:"Close", className:"ghost", onClick: closeModal }
+      ]
+    });
+
+    // Quick actions
+    $("manageSetupBtn").addEventListener("click", ()=>{
+      closeModal();
+      $("tabs").style.display = "none";
+      showPanel("onboarding");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    $("goToChoresBtn").addEventListener("click", ()=>{
+      closeModal();
+      $("tabs").style.display = "grid";
+      showPanel("chores");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    // Wire buttons
+    $("toggleSoundBtn").addEventListener("click", ()=>{
+      state.settings.soundEnabled = !state.settings.soundEnabled;
+      scheduleSave();
+      toast("Saved");
+      closeModal();
+      openAccountModal();
+    });
+
+    $("toggleKeepBtn").addEventListener("click", ()=>{
+      state.settings.keepActivityOnReset = !state.settings.keepActivityOnReset;
+      scheduleSave();
+      toast("Saved");
+      closeModal();
+      openAccountModal();
+    });
+
+    $("toggleWeeklyBtn").addEventListener("click", ()=>{
+      deviceSettings.weeklyReminderEnabled = !deviceSettings.weeklyReminderEnabled;
+      saveDeviceSettings(deviceSettings);
+      toast("Saved");
+      closeModal();
+      openAccountModal();
+    });
+
+    $("weeklyTime").addEventListener("change", ()=>{
+      deviceSettings.weeklyReminderTime = $("weeklyTime").value || "18:00";
+      saveDeviceSettings(deviceSettings);
+      toast("Saved");
+    });
+
+    $("notifBtn").addEventListener("click", async ()=>{
+      const ok = await enableNotifications();
+      deviceSettings.notificationsEnabled = ok;
+      saveDeviceSettings(deviceSettings);
+      toast(ok ? "Notifications enabled" : "Notifications not enabled");
+      closeModal();
+      openAccountModal();
+    });
+
+    $("exportBtn").addEventListener("click", async ()=>{
+      if(!selectedHouseholdId || !selectedChildId){ toast("Select household and child first"); return; }
+      await exportState();
+      closeModal();
+    });
+
+    $("importBtn").addEventListener("click", ()=>{
+      if(!selectedHouseholdId || !selectedChildId){ toast("Select household and child first"); return; }
+      closeModal();
+      importStateFlow();
+    });
+  }
+
+  // Notifications
+  async function enableNotifications(){
+    try{
+      if(!("Notification" in window)) return false;
+      const perm = await Notification.requestPermission();
+      if(perm !== "granted") return false;
+
+      try{
+        if(swReg && swReg.showNotification){
+          await swReg.showNotification("Oli's Money", {
+            body: "Notifications enabled on this device.",
+            icon: "icons/icon-192.png"
+          });
+        }
+      }catch(e){}
+
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  // Weekly reminder tick
+  async function weeklyReminderTick(){
+    if(!deviceSettings.weeklyReminderEnabled) return;
+    if(!selectedHouseholdId || !selectedChildId) return;
+
+    const now = new Date();
+    const isSunday = now.getDay() === 0;
+    if(!isSunday) return;
+
+    const hhmm = (deviceSettings.weeklyReminderTime || "18:00").split(":");
+    const target = new Date(now);
+    target.setHours(Number(hhmm[0]||18), Number(hhmm[1]||0), 0, 0);
+
+    if(now < target) return;
+
+    const todayKey = localDateKey(nowISO());
+    if(deviceSettings.lastReminderDate === todayKey) return;
+
+    deviceSettings.lastReminderDate = todayKey;
+    saveDeviceSettings(deviceSettings);
+
+    if(deviceSettings.notificationsEnabled && "Notification" in window && Notification.permission === "granted"){
+      try{
+        if(swReg && swReg.showNotification){
+          await swReg.showNotification("Pocket Money reminder", {
+            body: "It’s Sunday. Do you want to reset the current period?",
+            icon: "icons/icon-192.png"
+          });
+        }
+      }catch(e){}
+    }
+
+    const ok = await confirmModal({
+      title:"Weekly reminder",
+      message:"It’s Sunday. Do you want to reset the current period now?",
+      confirmLabel:"Reset",
+      confirmClass:"warn",
+      cancelLabel:"Not now"
+    });
+    if(ok) resetTotal();
+  }
+
+  setInterval(()=> weeklyReminderTick().catch(()=>{}), 60 * 1000);
+
+  // --- Test clears (passcode 2408) ---
+  async function clearActivityTesting(){
+    const okPass = await passcodeModal({
+      title:"Clear activity log",
+      message:"Enter the passcode to clear the Activity log."
+    });
+    if(!okPass){ toast("Wrong passcode"); return; }
+
+    const ok = await confirmModal({
+      title:"Clear Activity log?",
+      message:"This will remove all Activity items.",
+      confirmLabel:"Clear",
+      confirmClass:"danger"
+    });
+    if(!ok) return;
+
+    state.activity = [];
+    scheduleSave();
+    toast("Activity cleared");
+    renderActivity();
+  }
+
+  async function clearHistoryTesting(){
+    const okPass = await passcodeModal({
+      title:"Clear history",
+      message:"Enter the passcode to clear History. This will reset the Savings bank and goal redemptions."
+    });
+    if(!okPass){ toast("Wrong passcode"); return; }
+
+    const ok = await confirmModal({
+      title:"Clear History?",
+      message:"This will remove all History records and reset Savings bank.",
+      confirmLabel:"Clear",
+      confirmClass:"danger"
+    });
+    if(!ok) return;
+
+    state.history = [];
+    state.bankSpent = 0;
+    state.goalRedemptions = [];
+    (state.goals || []).forEach(g=> g.redeemedAt = null);
+
+    scheduleSave();
+    toast("History cleared");
+    renderHistory();
+    renderGoals();
+  }
+
+  // --- Rendering ---
+  function renderHeader(){
+    $("lastReset").textContent = "Last reset: " + (state.lastResetAt ? fmtDateTime(state.lastResetAt) : "never");
+    $("totalDisplay").textContent = fmtGBP(state.earnedTotal);
+    $("totalDisplay").dataset.value = String(state.earnedTotal);
+    $("periodTotal").textContent = fmtGBP(state.earnedTotal);
+  }
+
+  function renderChores(){
+    const list = state.chores || [];
+    $("choresList").innerHTML = "";
+    $("choresEmpty").style.display = list.length ? "none" : "block";
+
+    list.forEach(c=>{
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const freqLabel =
+        c.frequency==="daily" ? "Daily" :
+        c.frequency==="weekly" ? "Weekly" :
+        "Anytime";
+
+      const canDo = choreCompletionAllowed(c);
+
+      card.innerHTML = `
+        <div class="chore">
+          <div class="badge">
+            <div style="font-size:14px;">${fmtGBP(c.value)}</div>
+            <div style="font-size:10px; font-weight:900; color:var(--muted); margin-top:2px;">${freqLabel}</div>
+          </div>
+          <div class="meta">
+            <p class="t">${escapeHTML(c.title)}</p>
+            <p class="d">${escapeHTML(c.desc||"")}</p>
+            <div style="height:10px"></div>
+            <div class="actions">
+              <button class="${canDo ? "good" : "ghost"}" data-act="complete">${canDo ? "Complete" : "Done"}</button>
+              <button class="ghost" data-act="edit">Edit</button>
+              <button class="danger" data-act="delete">Delete</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      card.querySelector('[data-act="complete"]').addEventListener("click", ()=> completeChore(c.id));
+      card.querySelector('[data-act="edit"]').addEventListener("click", ()=> openChoreEditor(c));
+      card.querySelector('[data-act="delete"]').addEventListener("click", ()=> deleteChore(c.id));
+
+      $("choresList").appendChild(card);
+    });
+  }
+
+  function renderActivity(){
+    const list = state.activity || [];
+    $("activityList").innerHTML = "";
+    $("activityEmpty").style.display = list.length ? "none" : "block";
+    $("activityCount").textContent = String(list.length);
+    $("periodTotal").textContent = fmtGBP(state.earnedTotal);
+
+    list.forEach(a=>{
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const kind = a.type === "manual" ? "Manual" : "Chore";
+      const val = Number(a.value || 0);
+      const sign = val >= 0 ? "+" : "−";
+
+      card.innerHTML = `
+        <div class="row" style="align-items:flex-start;">
+          <div style="min-width:0;">
+            <div style="font-weight:950; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(a.title||"(item)")}</div>
+            <div style="margin-top:2px; color:var(--muted); font-weight:850; font-size:12px;">${kind} • ${fmtDateTime(a.at)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:950; font-size:16px;">${sign}${fmtGBP(Math.abs(val))}</div>
+            <div style="height:8px;"></div>
+            <button class="warn" data-act="undo">Undo</button>
+          </div>
+        </div>
+      `;
+      card.querySelector('[data-act="undo"]').addEventListener("click", ()=> undoActivity(a.id));
+      $("activityList").appendChild(card);
+    });
+  }
+
+  function renderHistory(){
+    $("bankTotal").textContent = fmtGBP(bankTotal());
+    $("bankAvailable").textContent = fmtGBP(bankAvailable());
+
+    const mode = $("historyMode").value;
+    const opts = historyFilters();
+    const prev = $("historyFilter").value || "all";
+
+    $("historyFilter").innerHTML = opts.map(o => `<option value="${escapeHTML(o.value)}">${escapeHTML(o.label)}</option>`).join("");
+    if(opts.some(o=>o.value===prev)) $("historyFilter").value = prev;
+    else $("historyFilter").value = "all";
+
+    const filterVal = $("historyFilter").value;
+    $("historyList").innerHTML = "";
+
+    if(mode === "records"){
+      const records = (state.history || []).filter(r=>{
+        if(filterVal==="all") return true;
+        return monthKey(new Date(r.endAt)) === filterVal;
+      });
+
+      $("historyEmpty").style.display = records.length ? "none" : "block";
+
+      records.forEach(r=>{
+        const card = document.createElement("div");
+        card.className = "card";
+        const dur = `${fmtDateTime(r.startAt)} → ${fmtDateTime(r.endAt)}`;
+        card.innerHTML = `
+          <div class="row" style="align-items:flex-start;">
+            <div style="min-width:0;">
+              <div style="font-weight:950; font-size:14px;">Period total: ${fmtGBP(r.total)}</div>
+              <div style="margin-top:2px; color:var(--muted); font-weight:850; font-size:12px;">${dur} • ${(r.items||0)} activity item(s)</div>
+            </div>
+            <span class="pill">${monthKey(new Date(r.endAt))}</span>
+          </div>
+        `;
+        $("historyList").appendChild(card);
+      });
+      return;
+    }
+
+    const grouped = groupHistory(mode);
+    const shown = grouped.filter(g => filterVal==="all" || g.key===filterVal);
+
+    $("historyEmpty").style.display = shown.length ? "none" : "block";
+
+    shown.forEach(g=>{
+      const card = document.createElement("div");
+      card.className = "card";
+      const label = mode==="week" ? `Week ${g.key}` : `Month ${g.key}`;
+      card.innerHTML = `
+        <div class="row">
+          <div>
+            <div style="font-weight:950; font-size:14px;">${label}</div>
+            <div style="margin-top:2px; color:var(--muted); font-weight:850; font-size:12px;">${g.records} reset period(s)</div>
+          </div>
+          <div style="font-weight:950; font-size:16px;">${fmtGBP(g.total)}</div>
+        </div>
+      `;
+      $("historyList").appendChild(card);
+    });
+  }
+
+  function renderGoals(){
+    const list = state.goals || [];
+    $("goalsList").innerHTML = "";
+    $("goalsEmpty").style.display = list.length ? "none" : "block";
+
+    const available = bankAvailable();
+    $("goalBalance").textContent = fmtGBP(available);
+    $("goalSpent").textContent = fmtGBP(state.bankSpent || 0);
+
+    list.forEach(g=>{
+      const redeemed = !!g.redeemedAt;
+      const progress = g.cost > 0 ? Math.max(0, Math.min(1, available / g.cost)) : 0;
+      const pct = Math.round(progress * 100);
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="row" style="align-items:flex-start; gap:12px;">
+          <div style="flex:1 1 auto; min-width:0;">
+            <div style="font-weight:950; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(g.title)}</div>
+            <div style="margin-top:2px; color:var(--muted); font-weight:850; font-size:12px;">${escapeHTML(g.desc||"")}</div>
+
+            <div style="height:10px"></div>
+
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="flex:1 1 auto; height:10px; border-radius:999px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); overflow:hidden;">
+                <div style="height:100%; width:${pct}%; background: linear-gradient(90deg, rgba(34,197,94,.8), rgba(124,58,237,.85));"></div>
+              </div>
+              <div style="font-weight:950; font-size:12px; color:var(--muted2);">${pct}%</div>
+            </div>
+
+            <div style="margin-top:8px; color:var(--muted); font-weight:850; font-size:12px;">
+              Cost: <strong style="color:var(--text);">${fmtGBP(g.cost)}</strong>
+              ${redeemed ? ` • Redeemed: <strong style="color:var(--text);">${fmtDateTime(g.redeemedAt)}</strong>` : ""}
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+            ${redeemed ? `<span class="pill">Redeemed</span>` : `<button class="good" data-act="redeem">Redeem</button>`}
+            <button class="ghost" data-act="edit">Edit</button>
+            <button class="danger" data-act="delete">Delete</button>
+          </div>
+        </div>
+      `;
+
+      const redeemBtn = card.querySelector('[data-act="redeem"]');
+      if(redeemBtn) redeemBtn.addEventListener("click", ()=> redeemGoal(g.id));
+      card.querySelector('[data-act="edit"]').addEventListener("click", ()=> openGoalEditor(g));
+      card.querySelector('[data-act="delete"]').addEventListener("click", ()=> deleteGoal(g.id));
+
+      $("goalsList").appendChild(card);
+    });
+  }
+
+  function renderAll(){
+    renderHeader();
+    renderChores();
+    renderActivity();
+    renderHistory();
+    renderGoals();
+  }
+
+  // --- Auth flows ---
+  async function doSignIn(){
+    const email = ($("email").value||"").trim();
+    const password = ($("password").value||"").trim();
+    if(!email || !password){ toast("Enter email and password"); return; }
+    try{
+      await signInWithEmailAndPassword(auth, email, password);
+      toast("Signed in");
+    }catch(e){
+      toast("Sign in failed");
+    }
+  }
+
+  async function doSignUp(){
+    const email = ($("email").value||"").trim();
+    const password = ($("password").value||"").trim();
+    if(!email || !password){ toast("Enter email and password"); return; }
+    if(password.length < 6){ toast("Password must be 6+ characters"); return; }
+    try{
+      await createUserWithEmailAndPassword(auth, email, password);
+      toast("Account created");
+    }catch(e){
+      toast("Sign up failed");
+    }
+  }
+
+  async function doSignOut(){
+    try{
+      await signOut(auth);
+      toast("Signed out");
+    }catch(e){}
+  }
+
+  // --- UI event bindings ---
+  $("signInBtn").addEventListener("click", doSignIn);
+  $("signUpBtn").addEventListener("click", doSignUp);
+  $("signOutBtn").addEventListener("click", doSignOut);
+
+  $("createHouseholdBtn").addEventListener("click", createHousehold);
+  $("joinHouseholdBtn").addEventListener("click", joinHousehold);
+  $("newInviteBtn").addEventListener("click", async ()=>{
+    if(!selectedHouseholdId){ toast("Select a household first"); return; }
+    await generateInviteForHousehold(selectedHouseholdId);
+  });
+
+  $("addChildBtn").addEventListener("click", addChild);
+  $("childSelect").addEventListener("change", ()=>{
+    selectedChildId = $("childSelect").value || "";
+    localStorage.setItem("selectedChildId", selectedChildId);
+    toast("Child selected");
+    renderAll();
+  });
+  $("enterAppBtn").addEventListener("click", enterApp);
+
+  $("addChoreBtn").addEventListener("click", ()=> openChoreEditor(null));
+  $("resetTotalBtn").addEventListener("click", resetTotal);
+  $("manualAddBtn").addEventListener("click", ()=> openManualAdjust(1));
+  $("manualSubBtn").addEventListener("click", ()=> openManualAdjust(-1));
+
+  $("clearActivityBtn").addEventListener("click", clearActivityTesting);
+  $("clearHistoryBtn").addEventListener("click", clearHistoryTesting);
+
+  $("addGoalBtn").addEventListener("click", ()=> openGoalEditor(null));
+
+  $("historyMode").addEventListener("change", renderHistory);
+  $("historyFilter").addEventListener("change", renderHistory);
+
+  $("accountBtn").addEventListener("click", openAccountModal);
+
+  $("refreshBtn").addEventListener("click", async ()=>{
+    deviceSettings = loadDeviceSettings();
+    await migrateLocalHouseholdsToUserIndex();
+    await subscribeUserHouseholds();
+    if(selectedHouseholdId) subscribeChildren();
+    renderAll();
+    toast("Refreshed");
+  });
+
+  // Auth state listener
+  onAuthStateChanged(auth, async (user)=>{
+    currentUser = user || null;
+
+    if(!currentUser){
+      $("authStatus").textContent = "Signed out";
+      $("syncPill").textContent = "Sync • Signed out";
+      $("signOutBtn").style.display = "none";
+      $("householdCard").style.display = "none";
+      $("childCard").style.display = "none";
+      $("tabs").style.display = "none";
+      showPanel("onboarding");
+      setSyncPill("Sync • Signed out", "");
+
+      if(childrenUnsub){ childrenUnsub(); childrenUnsub=null; }
+      if(stateUnsub){ stateUnsub(); stateUnsub=null; }
+
+      return;
+    }
+
+    $("authStatus").textContent = "Signed in";
+    $("signOutBtn").style.display = "inline-block";
+    $("householdCard").style.display = "block";
+    setSyncPill("Sync • Signed in", "good");
+
+    await subscribeUserHouseholds();
+
+    if(selectedHouseholdId){
+      $("childCard").style.display = "block";
+      subscribeChildren();
+    } else {
+      $("childCard").style.display = "none";
+      $("subline").textContent = "Create or join a household to begin";
+      showPanel("onboarding");
+    }
+  });
+
+  // Initial render
+  renderAll();
+</script>
+</body>
+</html>
