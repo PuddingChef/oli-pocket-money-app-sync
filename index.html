@@ -462,16 +462,16 @@
 
       <div class="divider"></div>
       <div class="row">
-        <div class="label">Recent households (this device)</div>
+        <div class="label">Your Households</div>
         <button class="ghost small" id="newInviteBtn" title="Generate a new invite code for the selected household">New invite</button>
       </div>
 
       <div style="height:10px"></div>
       <div id="householdsList" class="grid"></div>
-      <div class="empty" id="householdsEmpty" style="display:none;">No households on this device yet. Create one, or join using an invite code.</div>
+      <div class="empty" id="householdsEmpty" style="display:none;">No households yet. Create one, or join using an invite code.</div>
 
       <div class="footnote">
-        Note: for simplicity, this list is stored on each phone. Once you join a household on a phone, it appears here for switching.
+        Household data is saved against your account regardless of what device you are using.
       </div>
     </div>
 
@@ -642,9 +642,7 @@
     getAuth, onAuthStateChanged,
     createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import {
-    getFirestore, doc, collection, addDoc, setDoc, getDoc, onSnapshot, Timestamp
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getFirestore, doc, collection, addDoc, setDoc, getDoc, deleteDoc, getDocs, onSnapshot, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
   // --- Your Firebase config (embedded as provided) ---
   const firebaseConfig = {
@@ -1140,66 +1138,295 @@
 
   function updateSubline(childrenList){
     const child = (childrenList||[]).find(c=> c.id === selectedChildId);
-    const householdName = (selectedHouseholdName || "").trim() || selectedHouseholdId;
-    const hn = householdName ? `${householdName}` : "No household";
+    const hn = selectedHouseholdId ? `${selectedHouseholdName || selectedHouseholdId}` : "No household";
     const cn = child ? `Child: ${child.name||"Child"}` : "No child selected";
     $("subline").textContent = `${hn} • ${cn}`;
     $("childLabel").textContent = child ? `${child.name||"Child"} • Current period total` : "Current period total";
   }
 
-  // Household UI (recent list)
-  async function renderHouseholdsList(){
-    const wrap = $("householdsList");
-    wrap.innerHTML = "";
+  // Household list (synced per user; cross-device) — Pattern C
+  // We maintain a simple per-user index:
+  //   users/{uid}/households/{householdId}  { householdId, householdName, role, joinedAt, uid }
+  let householdsUnsub = null;
+  let userHouseholds = [];
 
-    const recent = JSON.parse(localStorage.getItem("recentHouseholds") || "[]");
-    const ids = Array.from(new Set([selectedHouseholdId, ...recent].filter(Boolean)));
+  function stopHouseholdSub(){
+    if(householdsUnsub){ householdsUnsub(); householdsUnsub = null; }
+    userHouseholds = [];
+  }
 
-    $("householdsEmpty").style.display = ids.length ? "none" : "block";
+  function userHouseholdsCol(){
+    return collection(db, "users", currentUser.uid, "households");
+  }
+
+  async function upsertUserHouseholdIndex({ householdId, householdName, role }){
+    if(!currentUser || !householdId) return;
+    const ref = doc(db, "users", currentUser.uid, "households", householdId);
+    await setDoc(ref, {
+      householdId,
+      householdName: householdName || householdId,
+      role: role || "member",
+      joinedAt: Timestamp.now(),
+      uid: currentUser.uid
+    }, { merge:true });
+  }
+
+
+  // One-time migration helper (keeps the app usable while moving away from localStorage):
+  // If you have old households stored locally, this will copy them into the per-user index.
+  async function migrateLocalHouseholdsToUserIndex(){
+    if(!currentUser) return;
+
+    const ids = new Set();
+    try{
+      const arr = JSON.parse(localStorage.getItem("recentHouseholds") || "[]");
+      (arr || []).forEach(id=> id && ids.add(id));
+    }catch(e){}
+    if(selectedHouseholdId) ids.add(selectedHouseholdId);
 
     for(const hid of ids){
       try{
-        const snap = await getDoc(doc(db,"households",hid));
-        if(!snap.exists()) continue;
-        const h = snap.data();
+        const hSnap = await getDoc(doc(db, "households", hid));
+        if(!hSnap.exists()) continue;
+        const householdName = hSnap.data()?.name || hid;
 
-        const hName = (h.name || hid);
-        if(hid === selectedHouseholdId && (!selectedHouseholdName || selectedHouseholdName !== hName)){
-          selectedHouseholdName = hName;
-          localStorage.setItem("selectedHouseholdName", hName);
-        }
+        let role = "member";
+        try{
+          const memSnap = await getDoc(doc(db, "households", hid, "members", currentUser.uid));
+          if(memSnap.exists()) role = memSnap.data()?.role || "member";
+        }catch(e){}
 
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <div class="row">
-            <div style="min-width:0;">
-              <div style="font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(h.name||hid)}</div>
-              <div class="footnote" style="margin-top:4px;">ID: ${escapeHTML(hid)}</div>
-            </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button class="${hid===selectedHouseholdId ? "good" : "ghost"} small" data-act="select">Select</button>
-              <button class="ghost small" data-act="invite">Invite</button>
-            </div>
-          </div>
-        `;
-        card.querySelector('[data-act="select"]').addEventListener("click", ()=>{
-          selectedHouseholdId = hid;
-          selectedHouseholdName = hName;
-          localStorage.setItem("selectedHouseholdId", hid);
-          localStorage.setItem("selectedHouseholdName", hName);
-          rememberHousehold(hid);
-          $("householdStatus").textContent = `Selected: ${hName}`;
-          toast("Household selected");
-          $("childCard").style.display = "block";
-          subscribeChildren();
+        await upsertUserHouseholdIndex({ householdId: hid, householdName, role });
+      }catch(e){
+        // Ignore: not a member, missing household, or rules deny.
+      }
+    }
+  }
+
+  async function subscribeUserHouseholds(){
+    stopHouseholdSub();
+    if(!currentUser) return;
+
+    const colRef = userHouseholdsCol();
+
+    householdsUnsub = onSnapshot(colRef, async (snap)=>{
+      const list = [];
+      snap.forEach(d=>{
+        const data = d.data() || {};
+        list.push({
+          householdId: data.householdId || d.id,
+          name: data.householdName || data.name || d.id,
+          role: data.role || "member",
+          joinedAt: data.joinedAt || null
         });
-        card.querySelector('[data-act="invite"]').addEventListener("click", ()=> generateInviteForHousehold(hid));
-        wrap.appendChild(card);
-      }catch(e){}
+      });
+
+      list.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||"")));
+
+      // Self-heal stale index rows (e.g., you were removed from a household)
+      const verified = [];
+      for(const h of list){
+        try{
+          await getDoc(doc(db, "households", h.householdId)); // requires membership per rules
+          verified.push(h);
+        }catch(e){
+          // No longer authorised -> remove from your own index so it disappears everywhere.
+          try{ await deleteDoc(doc(db, "users", currentUser.uid, "households", h.householdId)); }catch{}
+        }
+      }
+
+      userHouseholds = verified;
+      renderHouseholdsList();
+    }, (e)=>{
+      console.error("Households subscribe error:", e);
+      toast("Cannot load households (check membership / rules)");
+      userHouseholds = [];
+      renderHouseholdsList();
+    });
+  }
+
+  async function leaveHousehold(hid, role){
+    if(!currentUser || !hid) return;
+
+    const ok = await confirmModal({
+      title: role === "owner" ? "Leave household as owner?" : "Leave household?",
+      message: role === "owner"
+        ? "You are the <strong>owner</strong>. Leaving will remove your access from this device and any others. The household will remain in the database. Continue?"
+        : "This will remove your access to this household on all devices. Continue?",
+      confirmLabel: "Leave",
+      confirmClass: "danger"
+    });
+    if(!ok) return;
+
+    try{
+      await deleteDoc(doc(db, "households", hid, "members", currentUser.uid));
+    }catch(e){
+      toast("Could not leave (check rules)");
+      return;
     }
 
-    $("householdStatus").textContent = selectedHouseholdId ? `Selected: ${(selectedHouseholdName||selectedHouseholdId)}` : "None selected";
+    try{ await deleteDoc(doc(db, "users", currentUser.uid, "households", hid)); }catch{}
+
+    if(selectedHouseholdId === hid){
+      selectedHouseholdId = "";
+      selectedHouseholdName = "";
+      localStorage.setItem("selectedHouseholdId", "");
+      localStorage.setItem("selectedHouseholdName", "");
+      $("childCard").style.display = "none";
+      $("subline").textContent = "Create or join a household to begin";
+      if(childrenUnsub){ childrenUnsub(); childrenUnsub=null; }
+      if(stateUnsub){ stateUnsub(); stateUnsub=null; }
+      $("tabs").style.display = "none";
+      showPanel("onboarding");
+    }
+
+    toast("Left household");
+  }
+
+  async function openMembersManager(hid, hName){
+    if(!currentUser || !hid) return;
+
+    openModal({
+      title: `Members • ${escapeHTML(hName || hid)}`,
+      bodyHTML: `<div class="empty" id="membersLoading">Loading…</div>`,
+      footerButtons: [
+        { label:"Close", className:"ghost", onClick: closeModal }
+      ]
+    });
+
+    try{
+      const snap = await getDocs(collection(db, "households", hid, "members"));
+      const members = [];
+      snap.forEach(d=>{
+        const data = d.data() || {};
+        members.push({ uid: d.id, role: data.role || "member" });
+      });
+      members.sort((a,b)=> a.role === b.role ? (a.uid < b.uid ? -1 : 1) : (a.role === "owner" ? -1 : 1));
+
+      const rows = members.map(m=>{
+        const isSelf = m.uid === currentUser.uid;
+        const canRemove = !isSelf; // owner rule enforced server-side
+        return `
+          <div class="row" style="padding:10px 0; border-bottom:1px solid var(--line);">
+            <div style="min-width:0;">
+              <div style="font-weight:900;">${escapeHTML(m.uid)}</div>
+              <div class="footnote" style="margin-top:3px;">Role: <strong>${escapeHTML(m.role)}</strong>${isSelf ? " • (you)" : ""}</div>
+            </div>
+            ${canRemove ? `<button class="danger small" data-uid="${escapeHTML(m.uid)}">Remove</button>` : `<span class="pill">You</span>`}
+          </div>
+        `;
+      }).join("");
+
+      $("modalBody").innerHTML = `
+        <div style="font-weight:950; margin-bottom:8px;">Members</div>
+        <div class="footnote" style="margin-top:-2px;">Removing a member revokes their access. Their app will self-clean the household from their list on next sign-in.</div>
+        <div style="height:10px"></div>
+        <div>${rows || `<div class="empty">No members found.</div>`}</div>
+      `;
+
+      Array.from($("modalBody").querySelectorAll("button[data-uid]")).forEach(btn=>{
+        btn.addEventListener("click", async ()=>{
+          const uidToRemove = btn.getAttribute("data-uid");
+          const ok = await confirmModal({
+            title:"Remove member?",
+            message:`Remove <strong>${escapeHTML(uidToRemove)}</strong> from this household?`,
+            confirmLabel:"Remove",
+            confirmClass:"danger"
+          });
+          if(!ok) return;
+          try{
+            await deleteDoc(doc(db, "households", hid, "members", uidToRemove));
+            toast("Member removed");
+            closeModal();
+            openMembersManager(hid, hName);
+          }catch(e){
+            toast("Could not remove (check owner role / rules)");
+          }
+        });
+      });
+    }catch(e){
+      console.error("Members load error:", e);
+      $("modalBody").innerHTML = `<div class="empty">Could not load members (check rules).</div>`;
+    }
+  }
+
+  // Household UI (from user index)
+  function renderHouseholdsList(){
+    const wrap = $("householdsList");
+    wrap.innerHTML = "";
+
+    $("householdsEmpty").style.display = userHouseholds.length ? "none" : "block";
+
+    // Keep selection name in sync (for header/subline)
+    const selected = userHouseholds.find(h=> h.householdId === selectedHouseholdId);
+    if(selected){
+      selectedHouseholdName = selected.name || selectedHouseholdName || selectedHouseholdId;
+      localStorage.setItem("selectedHouseholdName", selectedHouseholdName);
+      $("householdStatus").textContent = `Selected: ${selectedHouseholdName}`;
+      $("childCard").style.display = "block";
+    }else{
+      if(selectedHouseholdId){
+        // If local storage had an old householdId, clear it.
+        selectedHouseholdId = "";
+        selectedHouseholdName = "";
+        localStorage.setItem("selectedHouseholdId", "");
+        localStorage.setItem("selectedHouseholdName", "");
+      }
+      $("householdStatus").textContent = "None selected";
+      $("childCard").style.display = "none";
+      $("subline").textContent = "Create or join a household to begin";
+      showPanel("onboarding");
+    }
+
+    userHouseholds.forEach(h=>{
+      const isSel = h.householdId === selectedHouseholdId;
+      const roleLabel = h.role === "owner" ? "Owner" : "Member";
+      const rolePillStyle = h.role === "owner"
+        ? 'style="border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.14); color: var(--text);"'
+        : '';
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="row">
+          <div style="min-width:0;">
+            <div style="font-weight:950; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(h.name || h.householdId)}</div>
+            <div class="footnote" style="margin-top:4px;">ID: ${escapeHTML(h.householdId)}</div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center;">
+            <span class="pill" ${rolePillStyle}>${roleLabel}</span>
+            <button class="${isSel ? "good" : "ghost"} small" data-act="select">Select</button>
+            <button class="ghost small" data-act="invite">Invite</button>
+            ${h.role === "owner" ? `<button class="ghost small" data-act="members">Members</button>` : ``}
+            <button class="danger small" data-act="leave">Leave</button>
+          </div>
+        </div>
+      `;
+
+      card.querySelector('[data-act="select"]').addEventListener("click", ()=>{
+        selectedHouseholdId = h.householdId;
+        selectedHouseholdName = h.name || h.householdId;
+        localStorage.setItem("selectedHouseholdId", selectedHouseholdId);
+        localStorage.setItem("selectedHouseholdName", selectedHouseholdName);
+        $("householdStatus").textContent = `Selected: ${selectedHouseholdName}`;
+        toast("Household selected");
+        $("childCard").style.display = "block";
+        subscribeChildren();
+        renderAll();
+      });
+
+      card.querySelector('[data-act="invite"]').addEventListener("click", ()=>{
+        if(h.role !== "owner"){ toast("Only the owner can invite"); return; }
+        generateInviteForHousehold(h.householdId);
+      });
+
+      const membersBtn = card.querySelector('[data-act="members"]');
+      if(membersBtn) membersBtn.addEventListener("click", ()=> openMembersManager(h.householdId, h.name));
+
+      card.querySelector('[data-act="leave"]').addEventListener("click", ()=> leaveHousehold(h.householdId, h.role));
+
+      wrap.appendChild(card);
+    });
   }
 
   // Invite code generator
@@ -1251,21 +1478,23 @@
       });
 
       await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
+        uid: currentUser.uid,
         role: "owner",
         joinedAt: Timestamp.now()
       });
+
+      await upsertUserHouseholdIndex({ householdId: hid, householdName: name, role: "owner" });
 
       selectedHouseholdId = hid;
       selectedHouseholdName = name;
       localStorage.setItem("selectedHouseholdId", hid);
       localStorage.setItem("selectedHouseholdName", name);
-      rememberHousehold(hid);
 
       toast("Household created");
-      $("householdStatus").textContent = `Selected: ${hid}`;
+      $("householdStatus").textContent = `Selected: ${name}`;
       $("childCard").style.display = "block";
 
-      await renderHouseholdsList();
+      renderHouseholdsList();
       await generateInviteForHousehold(hid);
       subscribeChildren();
     }catch(e){
@@ -1279,37 +1508,64 @@
     if(!code){ toast("Enter an invite code"); return; }
     if(!currentUser){ toast("Sign in first"); return; }
 
-    const invSnap = await getDoc(doc(db,"invites",code));
-    if(!invSnap.exists()){ toast("Invite not found"); return; }
-    const inv = invSnap.data();
-    if(!inv.active){ toast("Invite not active"); return; }
-
-    const hid = inv.householdId;
-
-    let hName = hid;
     try{
-      const hs = await getDoc(doc(db,"households",hid));
-      if(hs.exists()) hName = (hs.data()?.name || hid);
-    }catch(e){}
+      const invSnap = await getDoc(doc(db,"invites",code));
+      if(!invSnap.exists()){ toast("Invite not found"); return; }
+      const inv = invSnap.data();
+      if(!inv.active){ toast("Invite not active"); return; }
 
-    await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
-      role: "member",
-      joinedAt: Timestamp.now(),
-      inviteCode: code
-    });
+      const hid = inv.householdId;
 
-    selectedHouseholdId = hid;
-    selectedHouseholdName = hName;
-    localStorage.setItem("selectedHouseholdId", hid);
-    localStorage.setItem("selectedHouseholdName", hName);
-    rememberHousehold(hid);
+      // If you are already a member (e.g., owner joining on another device), do NOT overwrite your role.
+      let roleToKeep = "member";
+      try{
+        const memSnap = await getDoc(doc(db,"households",hid,"members",currentUser.uid));
+        if(memSnap.exists()){
+          roleToKeep = memSnap.data()?.role || "member";
+        }else{
+          await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
+            uid: currentUser.uid,
+            role: "member",
+            joinedAt: Timestamp.now(),
+            inviteCode: code
+          });
+          roleToKeep = "member";
+        }
+      }catch(e){
+        // Not authorised yet (expected when first joining) — create membership using the invite.
+        await setDoc(doc(db,"households",hid,"members",currentUser.uid),{
+          uid: currentUser.uid,
+          role: "member",
+          joinedAt: Timestamp.now(),
+          inviteCode: code
+        });
+        roleToKeep = "member";
+      }
 
-    toast("Joined household");
-    $("householdStatus").textContent = `Selected: ${hid}`;
-    $("childCard").style.display = "block";
+      // Now you should be a member, so reading the household doc is allowed.
+      let householdName = hid;
+      try{
+        const hSnap = await getDoc(doc(db,"households",hid));
+        if(hSnap.exists()) householdName = hSnap.data()?.name || hid;
+      }catch(e){}
 
-    await renderHouseholdsList();
-    subscribeChildren();
+      await upsertUserHouseholdIndex({ householdId: hid, householdName, role: roleToKeep });
+
+      selectedHouseholdId = hid;
+      selectedHouseholdName = householdName;
+      localStorage.setItem("selectedHouseholdId", hid);
+      localStorage.setItem("selectedHouseholdName", householdName);
+
+      toast("Joined household");
+      $("householdStatus").textContent = `Selected: ${householdName}`;
+      $("childCard").style.display = "block";
+
+      renderHouseholdsList();
+      subscribeChildren();
+    }catch(e){
+      console.error(e);
+      toast("Join failed (check console / rules)");
+    }
   }
 
   // Children create/select/enter
@@ -1488,18 +1744,6 @@
   function undoActivity(id){
     const item = state.activity.find(a=>a.id===id);
     if(!item) return;
-
-    // If undoing a chore completion for a Daily/Weekly chore, reset its completion state
-    if(item.type === "chore" && item.choreId){
-      const c = (state.chores || []).find(x=>x.id===item.choreId);
-      if(c && (c.frequency === "daily" || c.frequency === "weekly") && c.lastCompletedAt){
-        const samePeriod = c.frequency === "daily"
-          ? localDateKey(c.lastCompletedAt) === localDateKey(item.at)
-          : isoWeekKey(new Date(c.lastCompletedAt)) === isoWeekKey(new Date(item.at));
-        if(samePeriod) c.lastCompletedAt = null;
-      }
-    }
-
     const val = Number(item.value || 0);
     state.earnedTotal = round2(state.earnedTotal - val);
     state.activity = state.activity.filter(a=>a.id!==id);
@@ -1513,7 +1757,6 @@
     renderActivity();
     renderGoals();
     renderHistory();
-    renderChores();
   }
 
   function openManualAdjust(sign){
@@ -2083,7 +2326,6 @@
           <div class="meta">
             <p class="t">${escapeHTML(c.title)}</p>
             <p class="d">${escapeHTML(c.desc||"")}</p>
-            <p class="d" style="margin-top:6px; color:var(--muted2); font-weight:800;">Last completed: ${fmtDateTime(c.lastCompletedAt)}</p>
             <div style="height:10px"></div>
             <div class="actions">
               <button class="${canDo ? "good" : "ghost"}" data-act="complete">${canDo ? "Complete" : "Done"}</button>
@@ -2331,8 +2573,9 @@
 
   $("refreshBtn").addEventListener("click", async ()=>{
     deviceSettings = loadDeviceSettings();
-    await renderHouseholdsList();
-    subscribeChildren();
+    await migrateLocalHouseholdsToUserIndex();
+    await subscribeUserHouseholds();
+    if(selectedHouseholdId) subscribeChildren();
     renderAll();
     toast("Refreshed");
   });
@@ -2362,7 +2605,7 @@
     $("householdCard").style.display = "block";
     setSyncPill("Sync • Signed in", "good");
 
-    await renderHouseholdsList();
+    await subscribeUserHouseholds();
 
     if(selectedHouseholdId){
       $("childCard").style.display = "block";
@@ -2379,4 +2622,3 @@
 </script>
 </body>
 </html>
-
