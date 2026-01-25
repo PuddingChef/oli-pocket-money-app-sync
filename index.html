@@ -43,8 +43,8 @@
     header{
       position:sticky; top:0; z-index:10;
       padding:16px 16px 10px;
-      backdrop-filter: blur(10px);
-      background: rgba(11,16,32,.72);
+      backdrop-filter: none;
+      background: var(--bg);
       border-bottom: 1px solid var(--line);
     }
     .title{
@@ -191,8 +191,8 @@
 
     .tabs{
       position: fixed; left:0; right:0; bottom:0;
-      background: rgba(11,16,32,.78);
-      backdrop-filter: blur(10px);
+      background: var(--bg);
+      backdrop-filter: none;
       border-top: 1px solid var(--line);
       display:grid;
       grid-template-columns: repeat(4, 1fr);
@@ -330,6 +330,26 @@
       font-size:16px;
       line-height:1;
     }
+    .pwWrap{ position:relative; }
+    .pwToggle{
+      position:absolute;
+      right:6px;
+      top:50%;
+      transform: translateY(-50%);
+      width:34px;
+      height:34px;
+      border-radius: 12px;
+      opacity:.9;
+    }
+    .pwToggle:active{ transform: translateY(calc(-50% + 1px)) scale(.99); }
+
+
+
+
+    /* Goals (match chore typography) */
+    .goalTitle{ font-weight:950; font-size:15px; margin:0 0 2px; }
+    .goalDesc{ margin:0; color:var(--muted); font-weight:650; font-size:12px; line-height:1.25; }
+    .goalValue{ font-weight:950; font-size:18px; }
 
 
     /* KPIs */
@@ -485,7 +505,15 @@
         </div>
         <div>
           <div class="label">Password</div>
-          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+          <div class="pwWrap">
+            <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" style="padding-right:44px;" />
+            <button class="iconbtn pwToggle" id="pwToggleBtn" type="button" title="Show / hide password" aria-label="Toggle password visibility">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -493,6 +521,7 @@
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="primary" id="signInBtn">Sign in</button>
         <button class="good" id="signUpBtn">Create account</button>
+        <button class="ghost small" id="forgotPwBtn">Forgotten my password</button>
         <button class="danger" id="signOutBtn" style="display:none;">Sign out</button>
       </div>
 
@@ -705,7 +734,8 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import {
     getAuth, onAuthStateChanged,
-    createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
+    createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
+    sendPasswordResetEmail
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
   import { getFirestore, doc, collection, addDoc, setDoc, getDoc, deleteDoc, getDocs, onSnapshot, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -892,7 +922,7 @@
       activity: [],
       history: [],
       goals: [
-        { id: uid(), title:"LEGO set", desc:"Something awesome", cost:12.99, createdAt: nowISO(), redeemedAt: null }
+        { id: uid(), title:"LEGO set", desc:"Something awesome", cost:12.99, goalType:"one", createdAt: nowISO(), redeemedAt: null }
       ],
       bankSpent: 0,
       goalRedemptions: [],
@@ -920,7 +950,22 @@
 
     m.activity = Array.isArray(o.activity) ? o.activity : [];
     m.history  = Array.isArray(o.history) ? o.history : [];
-    m.goals    = Array.isArray(o.goals) ? o.goals : [];
+    m.goals = Array.isArray(o.goals) ? o.goals.map(g => {
+      const gt = (g.goalType==="recurring"||g.goalType==="one") ? g.goalType
+        : (g.recurring===true || g.type==="recurring") ? "recurring"
+        : "one";
+      return {
+        id: g.id || uid(),
+        title: String(g.title || "").slice(0,40),
+        desc: String(g.desc || "").slice(0,90),
+        cost: round2(Number(g.cost || 0)),
+        goalType: gt,
+        createdAt: g.createdAt || nowISO(),
+        // legacy: redeemedAt may exist from older one-time goals
+        redeemedAt: (gt==="one") ? (g.redeemedAt || null) : null,
+        lastRedeemedAt: (gt==="recurring") ? (g.lastRedeemedAt || g.redeemedAt || null) : null
+      };
+    }) : [];
 
     m.earnedTotal = round2(Number(m.earnedTotal || 0));
     m.bankSpent = round2(Number((o.bankSpent ?? o.goalsSpent ?? m.bankSpent) || 0));
@@ -1863,6 +1908,22 @@ function setTotalCardVisible(show){
     const item = state.activity.find(a=>a.id===id);
     if(!item) return;
     const val = Number(item.value || 0);
+
+    // Goals: refund Savings bank and restore one-time goals
+    if(item.type === "goal"){
+      state.bankSpent = round2(Number(state.bankSpent || 0) + val); // val is negative
+      if(item.goal && (item.goal.goalType === "one" || item.goal.goalType === "one-time" || item.goal.goalType === "oneOff")){
+        if(!state.goals.some(g=>g.id===item.goal.id)){
+          state.goals.unshift({ ...item.goal, redeemedAt: null, lastRedeemedAt: null });
+        }
+      }
+      state.activity = state.activity.filter(a=>a.id!==id);
+      scheduleSave();
+      toast("Undone");
+      renderActivity(); renderGoals(); renderHistory();
+      return;
+    }
+
     state.earnedTotal = round2(state.earnedTotal - val);
     state.activity = state.activity.filter(a=>a.id!==id);
 
@@ -1987,6 +2048,15 @@ function setTotalCardVisible(show){
 
         <div class="label">Cost (GBP)</div>
         <input id="gCost" inputmode="decimal" placeholder="10.00" value="${Number(g.cost||0).toFixed(2)}" />
+        <div style="height:10px"></div>
+
+        <div class="label">Goal type</div>
+        <select id="gType">
+          <option value="one">One-time</option>
+          <option value="recurring">Recurring</option>
+        </select>
+        <div class="footnote">One-time goals disappear after redeeming. Recurring goals can be redeemed again.</div>
+
       `,
       footerButtons: [
         { label:"Cancel", className:"ghost", onClick: closeModal },
@@ -1994,6 +2064,7 @@ function setTotalCardVisible(show){
           const title = ($("gTitle")?.value || "").trim();
           const desc  = ($("gDesc")?.value || "").trim();
           const cost  = toMoney($("gCost")?.value);
+          const goalType = ($("gType")?.value || "one");
 
           if(!title){ toast("Add a title"); return; }
           if(cost <= 0){ toast("Cost must be > £0"); return; }
@@ -2001,10 +2072,10 @@ function setTotalCardVisible(show){
           if(isEdit){
             const idx = state.goals.findIndex(x=>x.id===g.id);
             if(idx>=0){
-              state.goals[idx] = { ...state.goals[idx], title, desc, cost };
+              state.goals[idx] = { ...state.goals[idx], title, desc, cost, goalType };
             }
           }else{
-            state.goals.unshift({ id:g.id, title, desc, cost, createdAt: nowISO(), redeemedAt: null });
+            state.goals.unshift({ id:g.id, title, desc, cost, goalType, createdAt: nowISO(), redeemedAt: null, lastRedeemedAt: null });
           }
 
           scheduleSave();
@@ -2015,7 +2086,10 @@ function setTotalCardVisible(show){
       ]
     });
 
-    setTimeout(()=> $("gTitle")?.focus(), 40);
+    setTimeout(()=> {
+      $("gType").value = (g.goalType==="recurring"||g.goalType==="one") ? g.goalType : ((g.recurring===true||g.type==="recurring") ? "recurring" : "one");
+      $("gTitle")?.focus();
+    }, 40);
   }
 
   async function deleteGoal(id){
@@ -2037,35 +2111,72 @@ function setTotalCardVisible(show){
   }
 
   async function redeemGoal(id){
-    const g = state.goals.find(x=>x.id===id);
+    const g = (state.goals || []).find(x=>x.id===id);
     if(!g) return;
-    if(g.redeemedAt){ toast("Already redeemed"); return; }
+
+    const gt = (g.goalType==="recurring"||g.goalType==="one") ? g.goalType
+      : (g.recurring===true || g.type==="recurring") ? "recurring"
+      : "one";
 
     const available = bankAvailable();
+    const cost = Number(g.cost || 0);
 
     const ok = await confirmModal({
-      title: available < g.cost ? "Not enough in Savings bank" : "Redeem goal?",
-      message: available < g.cost
-        ? `Savings bank available is <strong>${fmtGBP(available)}</strong>, but this goal costs <strong>${fmtGBP(g.cost)}</strong>. Redeem anyway?`
-        : `Redeem <strong>${escapeHTML(g.title)}</strong> for <strong>${fmtGBP(g.cost)}</strong>? (Savings bank available will reduce.)`,
+      title: available < cost ? "Not enough in Savings bank" : "Redeem goal?",
+      message: available < cost
+        ? `Savings bank available is <strong>${fmtGBP(available)}</strong>, but this goal costs <strong>${fmtGBP(cost)}</strong>. Redeem anyway?`
+        : `Redeem <strong>${escapeHTML(g.title)}</strong> for <strong>${fmtGBP(cost)}</strong>? (Savings bank available will reduce.)`,
       confirmLabel: "Redeem",
-      confirmClass: available < g.cost ? "warn" : "good"
+      confirmClass: available < cost ? "warn" : "good"
     });
     if(!ok) return;
 
-    g.redeemedAt = nowISO();
-    state.bankSpent = round2(Number(state.bankSpent || 0) + Number(g.cost || 0));
+    const at = nowISO();
 
+    // Spend from bank
+    state.bankSpent = round2(Number(state.bankSpent || 0) + cost);
+
+    // Log in Activity (negative value shows as a spend)
+    state.activity = state.activity || [];
+    state.activity.unshift({
+      id: uid(),
+      type: "goal",
+      goalId: g.id,
+      title: `Goal redeemed: ${g.title}`,
+      value: round2(-cost),
+      at,
+      goal: {
+        id: g.id,
+        title: g.title,
+        desc: g.desc || "",
+        cost: cost,
+        goalType: gt,
+        createdAt: g.createdAt || nowISO()
+      }
+    });
+
+    // Keep legacy goalRedemptions for history tools
     state.goalRedemptions = state.goalRedemptions || [];
-    state.goalRedemptions.unshift({ id: uid(), goalId: g.id, title: g.title, cost: g.cost, at: g.redeemedAt });
+    state.goalRedemptions.unshift({ id: uid(), goalId: g.id, title: g.title, cost: cost, at });
+
+    if(gt === "one"){
+      // One-time goals disappear after redeeming
+      state.goals = (state.goals || []).filter(x=>x.id !== g.id);
+    } else {
+      // Recurring goals persist and can be redeemed again
+      g.lastRedeemedAt = at;
+    }
 
     scheduleSave();
     toast("Redeemed");
+
+    renderActivity();
     renderGoals();
     renderHistory();
   }
 
   // Export/import
+
   function exportPayload(){
     return {
       exportedAt: nowISO(),
@@ -2498,7 +2609,7 @@ function setTotalCardVisible(show){
       const card = document.createElement("div");
       card.className = "card";
 
-      const kind = a.type === "manual" ? "Manual" : "Chore";
+      const kind = a.type === "manual" ? "Manual" : (a.type === "goal" ? "Goal" : "Chore");
       const val = Number(a.value || 0);
       const sign = val >= 0 ? "+" : "−";
 
@@ -2593,46 +2704,51 @@ function setTotalCardVisible(show){
     $("goalSpent").textContent = fmtGBP(state.bankSpent || 0);
 
     list.forEach(g=>{
-      const redeemed = !!g.redeemedAt;
-      const progress = g.cost > 0 ? Math.max(0, Math.min(1, available / g.cost)) : 0;
-      const pct = Math.round(progress * 100);
+      const gt = (g.goalType==="recurring"||g.goalType==="one") ? g.goalType : ((g.recurring===true||g.type==="recurring") ? "recurring" : "one");
+      const recurring = gt === "recurring";
+
+      // Legacy: hide redeemed one-time goals if present
+      if(gt === "one" && g.redeemedAt) return;
 
       const card = document.createElement("div");
-      card.className = "card";
+      card.className = "card goal-card";
+      const progress = bankTotal() > 0 ? Math.min(1, Math.max(0, bankAvailable() / Math.max(0.01, Number(g.cost||0)))) : 0;
+
       card.innerHTML = `
-        <div class="row" style="align-items:flex-start; gap:12px;">
-          <div style="flex:1 1 auto; min-width:0;">
-            <div style="font-weight:950; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(g.title)}</div>
-            <div style="margin-top:2px; color:var(--muted); font-weight:850; font-size:12px;">${escapeHTML(g.desc||"")}</div>
-
-            <div style="height:10px"></div>
-
-            <div style="display:flex; align-items:center; gap:10px;">
-              <div style="flex:1 1 auto; height:10px; border-radius:999px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); overflow:hidden;">
-                <div style="height:100%; width:${pct}%; background: linear-gradient(90deg, rgba(34,197,94,.8), rgba(124,58,237,.85));"></div>
-              </div>
-              <div style="font-weight:950; font-size:12px; color:var(--muted2);">${pct}%</div>
-            </div>
-
-            <div style="margin-top:8px; color:var(--muted); font-weight:850; font-size:12px;">
-              Cost: <strong style="color:var(--text);">${fmtGBP(g.cost)}</strong>
-              ${redeemed ? ` • Redeemed: <strong style="color:var(--text);">${fmtDateTime(g.redeemedAt)}</strong>` : ""}
-            </div>
+        <div class="row between">
+          <div style="min-width:0;">
+            <p class="goalTitle">
+              ${escapeHTML(g.title || "")}
+              ${recurring ? `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px; margin-left:6px;">
+                <path d="M21 12a9 9 0 0 0-9-9 9 9 0 0 0-6.36 2.64"></path>
+                <polyline points="3 3 3 9 9 9"></polyline>
+                <path d="M3 12a9 9 0 0 0 9 9 9 9 0 0 0 6.36-2.64"></path>
+                <polyline points="21 21 21 15 15 15"></polyline>
+              </svg>` : ``}
+            </p>
+            <p class="goalDesc">${escapeHTML(g.desc || "")}</p>
           </div>
+          <div style="text-align:right;">
+            <div class="goalValue">${fmtGBP(g.cost || 0)}</div>
+          </div>
+        </div>
 
-          <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
-            ${redeemed ? `<span class="pill">Redeemed</span>` : `<button class="good" data-act="redeem">Redeem</button>`}
-            <button class="ghost" data-act="edit">Edit</button>
-            <button class="danger" data-act="delete">Delete</button>
+        <div style="height:10px"></div>
+        <div class="progress"><div class="bar" style="width:${Math.round(progress*100)}%"></div></div>
+
+        <div style="height:12px"></div>
+        <div class="row between">
+          <button class="good" data-act="redeem">${recurring ? "Redeem" : "Redeem & remove"}</button>
+          <div class="row" style="gap:8px">
+            <button class="ghost iconbtn" data-act="edit" title="Edit">✎</button>
+            <button class="danger iconbtn" data-act="delete" title="Delete">✕</button>
           </div>
         </div>
       `;
 
-      const redeemBtn = card.querySelector('[data-act="redeem"]');
-      if(redeemBtn) redeemBtn.addEventListener("click", ()=> redeemGoal(g.id));
+      card.querySelector('[data-act="redeem"]').addEventListener("click", ()=> redeemGoal(g.id));
       card.querySelector('[data-act="edit"]').addEventListener("click", ()=> openGoalEditor(g));
       card.querySelector('[data-act="delete"]').addEventListener("click", ()=> deleteGoal(g.id));
-
       $("goalsList").appendChild(card);
     });
   }
@@ -2686,6 +2802,18 @@ function setAuthFieldsVisible(show){
     }
   }
 
+
+  async function doPasswordReset(){
+    const email = ($("email").value||"").trim();
+    if(!email){ toast("Enter your email first"); return; }
+    try{
+      await sendPasswordResetEmail(auth, email);
+      toast("Password reset email sent");
+    }catch(e){
+      toast("Reset failed");
+    }
+  }
+
   async function doSignOut(){
     try{
       await signOut(auth);
@@ -2697,6 +2825,15 @@ function setAuthFieldsVisible(show){
   $("signInBtn").addEventListener("click", doSignIn);
   $("signUpBtn").addEventListener("click", doSignUp);
   $("signOutBtn").addEventListener("click", doSignOut);
+
+$("pwToggleBtn")?.addEventListener("click", ()=>{
+    const p = $("password");
+    if(!p) return;
+    const showing = p.type === "text";
+    p.type = showing ? "password" : "text";
+  });
+
+  $("forgotPwBtn")?.addEventListener("click", doPasswordReset);
 
   $("createHouseholdBtn").addEventListener("click", createHousehold);
   $("joinHouseholdBtn").addEventListener("click", joinHousehold);
