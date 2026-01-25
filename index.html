@@ -462,10 +462,13 @@
 
 <main>
   <!-- Onboarding -->
-  <section class="panel active" id="panel-onboarding" aria-label="Onboarding">
+  <section class="panel" id="panel-onboarding" aria-label="Onboarding">
     <div class="sectionhead">
       <h2>Account & sync</h2>
+      <div style="display:flex; gap:8px; align-items:center;">
       <button class="ghost" id="refreshBtn">Refresh</button>
+      <button class="ghost" id="closeAccountBtn">Close</button>
+    </div>
     </div>
 
     <div class="card">
@@ -568,7 +571,7 @@
   </section>
 
   <!-- Chores -->
-  <section class="panel" id="panel-chores" aria-label="Chores">
+  <section class="panel active" id="panel-chores" aria-label="Chores">
     <div class="sectionhead">
       <h2>Chores</h2>
       <button class="primary" id="addChoreBtn">+ Add chore</button>
@@ -997,14 +1000,26 @@ function setTotalCardVisible(show){
 
   // Simple auto-enter: if signed in and household+child already selected, go straight to app
   function autoEnterIfReady(){
-    if(!currentUser) return;
-    if(!selectedHouseholdId || !selectedChildId) return;
+    // Route to chores only when signed in AND a household + child are selected.
+    // Otherwise keep user on Account & sync to complete setup.
+    if(!currentUser){
+      $("tabs").style.display = "none";
+      showPanel("onboarding");
+      return;
+    }
 
-    $("tabs").style.display = "grid";
-    showPanel("chores");
-    subscribeState();
-    renderAll();
+    if(selectedHouseholdId && selectedChildId){
+      $("tabs").style.display = "grid";
+      showPanel("chores");
+      subscribeState();
+      renderAll();
+    } else {
+      $("tabs").style.display = "none";
+      showPanel("onboarding");
+      renderAll();
+    }
   }
+
 
   // Sync pill
   function setSyncPill(text, tone=""){
@@ -1234,9 +1249,6 @@ function setTotalCardVisible(show){
 
       $("childStatus").textContent = selectedChildId ? "Selected" : "None selected";
       updateSubline(children);
-
-      // Key change: if we are already "ready", jump straight into the app
-      autoEnterIfReady();
     }, ()=> toast("Cannot read children (check rules/membership)"));
   }
 
@@ -2726,6 +2738,16 @@ function setAuthFieldsVisible(show){
     toast("Refreshed");
   });
 
+  $("closeAccountBtn").addEventListener("click", ()=>{
+    if(!currentUser){ toast("Sign in first"); return; }
+    if(!selectedHouseholdId || !selectedChildId){ toast("Select a household and child first"); return; }
+    $("tabs").style.display = "grid";
+    showPanel("chores");
+    subscribeState();
+    renderAll();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
   // Auth state listener
   onAuthStateChanged(auth, async (user)=>{
     currentUser = user || null;
@@ -2765,10 +2787,14 @@ function setAuthFieldsVisible(show){
       $("subline").textContent = "Create or join a household to begin";
       showPanel("onboarding");
     }
+
+    // Route according to auth + selection state
+    autoEnterIfReady();
+
   });
 
   // Initial render
-  renderAll();
-</script>
+  showPanel("chores");
+  renderAll();</script>
 </body>
 </html>
