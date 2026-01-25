@@ -129,6 +129,12 @@
       box-shadow: 0 12px 30px rgba(0,0,0,.25);
     }
 
+    /* Household list selection highlight */
+    .householdcard.selected{
+      border-color: rgba(34,197,94,.55);
+      box-shadow: 0 12px 30px rgba(34,197,94,.12), 0 12px 30px rgba(0,0,0,.25);
+    }
+
     .sectionhead{
       display:flex;
       align-items:center;
@@ -251,10 +257,12 @@
 
     /* Chores */
     .chore{ display:flex; gap:10px; align-items:flex-start; }
-    .badge{
+    .chorecard.disabled{ opacity:.68; filter:saturate(.9); }
+    .badgebtn{
+      position:relative;
       flex:0 0 auto;
-      width:60px;
-      height:60px;
+      width:64px;
+      height:64px;
       border-radius:16px;
       display:grid;
       place-items:center;
@@ -264,13 +272,65 @@
       text-align:center;
       padding:6px 4px;
       line-height:1.05;
+      color: var(--text);
+      user-select:none;
+
+      /* button reset */
+      appearance:none;
+      -webkit-appearance:none;
+      outline:none;
+      cursor: default;
+      transition: transform .08s ease, filter .12s ease, box-shadow .12s ease, border-color .12s ease;
     }
+    .badgebtn.pressable{
+      cursor:pointer;
+      border-color: rgba(34,197,94,.55);
+      box-shadow:
+        0 14px 28px rgba(0,0,0,.25),
+        0 0 0 3px rgba(34,197,94,.10);
+    }
+    .badgebtn.pressable:active{ transform: translateY(1px) scale(.985); filter: brightness(1.08); }
+    .badgebtn.disabled{
+      cursor:not-allowed;
+      opacity:.85;
+      filter:saturate(.85);
+    }
+    .badgebtn:focus-visible{
+      box-shadow: 0 0 0 3px rgba(124,58,237,.35);
+    }
+
     .chore .meta{ flex:1 1 auto; min-width:0; }
     .chore .t{ font-weight:950; font-size:15px; margin:0 0 2px; }
     .chore .d{ margin:0; color:var(--muted); font-weight:650; font-size:12px; line-height:1.25; }
-    .chore .actions{ display:flex; flex-direction:column; gap:6px; flex:0 0 auto; align-items:stretch; justify-content:flex-start; }
-.chore .actions .complete{ padding:12px 12px; border-radius:16px; font-size:14px; }
-.iconbtn{ width:40px; padding:9px 0; border-radius:12px; text-align:center; }
+
+    .chore .actions{
+      flex:0 0 auto;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:8px;
+      padding-top:2px;
+    }
+    .actionrow{ display:flex; gap:6px; align-items:center; }
+
+    .chip.done{
+      border-color: rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      font-weight:900;
+    }
+
+    .iconbtn{
+      width:38px;
+      height:38px;
+      padding:0;
+      border-radius: 12px;
+      display:grid;
+      place-items:center;
+      font-size:16px;
+      line-height:1;
+    }
+
 
     /* KPIs */
     .kpi{
@@ -390,8 +450,8 @@
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="primary" id="resetTotalBtn">Bank</button>
-        <button class="good" id="manualAddBtn">+ Add</button>
-        <button class="danger" id="manualSubBtn">− Subtract</button>
+        <button class="good" id="manualAddBtn">+</button>
+        <button class="danger" id="manualSubBtn">−</button>
       </div>
     </div>
     <div class="footnote">
@@ -696,11 +756,37 @@
 
   // Toast
   let toastTimer=null;
+  let floatPlusTimer=null;
   function toast(msg){
     $("toast").textContent = msg;
     $("toast").classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(()=> $("toast").classList.remove("show"), 1400);
+  }
+
+
+  const CHORE_TIP_KEY = "pm_tip_chore_complete_v1";
+  function showChoreTipIfNeeded(){
+    try{
+      if(localStorage.getItem(CHORE_TIP_KEY) === "1") return;
+      if(!currentUser) return;
+      if(!$("panel-chores")?.classList.contains("active")) return;
+      if($("modalBack")?.classList.contains("show")) return;
+      if(!state || !Array.isArray(state.chores) || state.chores.length === 0) return;
+
+      openModal({
+        title: "Quick tip",
+        bodyHTML: `
+          <div style="font-weight:850; line-height:1.35;">
+            To complete a chore, tap the <strong>£ value</strong> badge on the left.
+          </div>
+          <div class="footnote" style="margin-top:10px;">You’ll only see this once.</div>
+        `,
+        footerButtons: [
+          { label:"Got it", className:"primary", onClick: ()=>{ localStorage.setItem(CHORE_TIP_KEY,"1"); closeModal(); } }
+        ]
+      });
+    }catch(e){}
   }
 
   // Modal
@@ -900,6 +986,7 @@ function setTotalCardVisible(show){
       t.classList.toggle("active", active);
     });
     setTotalCardVisible(name === "chores");
+    if(name === "chores"){ setTimeout(()=> showChoreTipIfNeeded(), 120); }
   }
   function switchTab(name){
     showPanel(name);
@@ -996,6 +1083,9 @@ function setTotalCardVisible(show){
     $("floatPlus").classList.remove("show");
     void $("floatPlus").offsetWidth;
     $("floatPlus").classList.add("show");
+
+    clearTimeout(floatPlusTimer);
+    floatPlusTimer = setTimeout(()=> $("floatPlus").classList.remove("show"), 900);
   }
 
   // Bank totals
@@ -1400,7 +1490,7 @@ function setTotalCardVisible(show){
         : '';
 
       const card = document.createElement("div");
-      card.className = "card";
+      card.className = "card householdcard" + (isSel ? " selected" : "");
       card.innerHTML = `
         <div class="row">
           <div style="min-width:0;">
@@ -1424,6 +1514,8 @@ function setTotalCardVisible(show){
         localStorage.setItem("selectedHouseholdName", selectedHouseholdName);
         $("householdStatus").textContent = `Selected: ${selectedHouseholdName}`;
         toast("Household selected");
+        // Re-render immediately so the green "selected" outline updates reliably.
+        renderHouseholdsList();
         $("childCard").style.display = "block";
         subscribeChildren();
         renderAll();
@@ -1762,6 +1854,17 @@ function setTotalCardVisible(show){
     state.earnedTotal = round2(state.earnedTotal - val);
     state.activity = state.activity.filter(a=>a.id!==id);
 
+    // If undoing a chore completion, reset its completion lock for Daily/Weekly chores
+    if(item.type === "chore" && item.choreId){
+      const c = (state.chores || []).find(x=>x.id===item.choreId);
+      if(c){
+        const freq = c.frequency || "anytime";
+        if(freq === "daily" || freq === "weekly"){
+          c.lastCompletedAt = null;
+        }
+      }
+    }
+
     scheduleSave();
 
     showFloatPlus(-val);
@@ -1771,6 +1874,7 @@ function setTotalCardVisible(show){
     renderActivity();
     renderGoals();
     renderHistory();
+    renderChores();
   }
 
   function openManualAdjust(sign){
@@ -2131,6 +2235,7 @@ function setTotalCardVisible(show){
       closeModal();
       $("tabs").style.display = "none";
       showPanel("onboarding");
+      Promise.resolve(renderHouseholdsList()).catch(()=>{});
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
     $("goToChoresBtn").addEventListener("click", ()=>{
@@ -2330,34 +2435,44 @@ function setTotalCardVisible(show){
         "Anytime";
 
       const canDo = choreCompletionAllowed(c);
+      const locked = !canDo;
+      const pressableClass = locked ? "disabled" : "pressable";
+      const lockedLabel = c.frequency==="daily" ? "Completed today" : "Completed this week";
+      const lockedToast = c.frequency === "daily" ? "Already completed today" : "Already completed this week";
+
+      card.className = "card chorecard" + (locked ? " disabled" : "");
 
       card.innerHTML = `
-  <div class="chore">
-    <div class="badge">
-      <div style="font-size:18px; font-weight:950;">${fmtGBP(c.value)}</div>
-      <div style="font-size:10px; font-weight:900; color:var(--muted); margin-top:4px;">${freqLabel}</div>
-    </div>
+        <div class="chore">
+          <button class="badgebtn ${pressableClass}" data-act="complete" aria-label="Complete chore: ${escapeHTML(c.title)}" ${locked ? "aria-disabled=\"true\"" : ""}>
+            <div style="font-size:14px;">${fmtGBP(c.value)}</div>
+            <div style="font-size:10px; font-weight:900; color:var(--muted); margin-top:2px;">${freqLabel}</div>
+          </button>
 
-    <div class="meta">
-      <p class="t">${escapeHTML(c.title)}</p>
-      <p class="d">${escapeHTML(c.desc||"")}</p>
-      ${c.lastCompletedAt ? `<div class="footnote" style="margin-top:6px;">Last completed: <strong>${fmtDateTime(c.lastCompletedAt)}</strong></div>` : ``}
-    </div>
+          <div class="meta">
+            <p class="t">${escapeHTML(c.title)}</p>
+            <p class="d">${escapeHTML(c.desc||"")}</p>
+          </div>
 
-    <div class="actions">
-      <button class="${canDo ? "good complete" : "ghost complete"}" data-act="complete">${canDo ? "Complete" : "Done"}</button>
-      <button class="ghost small" data-act="edit">Edit</button>
-      <button class="danger small iconbtn" data-act="delete" title="Delete">✕</button>
-    </div>
-  </div>
-`;
+          <div class="actions">
+            ${locked ? `<span class="chip done">${lockedLabel}</span>` : ``}
+            <div class="actionrow">
+              <button class="ghost iconbtn" data-act="edit" title="Edit">✎</button>
+              <button class="danger iconbtn" data-act="delete" title="Delete">✕</button>
+            </div>
+          </div>
+        </div>
+      `;
 
-      card.querySelector('[data-act="complete"]').addEventListener("click", ()=> completeChore(c.id));
+      card.querySelector('[data-act="complete"]').addEventListener("click", ()=>{
+        if(locked){ toast(lockedToast); return; }
+        completeChore(c.id);
+      });
       card.querySelector('[data-act="edit"]').addEventListener("click", ()=> openChoreEditor(c));
       card.querySelector('[data-act="delete"]').addEventListener("click", ()=> deleteChore(c.id));
 
       $("choresList").appendChild(card);
-    });
+});
   }
 
   function renderActivity(){
